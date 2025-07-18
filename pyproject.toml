@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rundeck-mcp-server"
+version = "1.0.0"
+description = "Model Context Protocol (MCP) server for Rundeck automation platform"
+readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "Rundeck MCP Server Team"}
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: System :: Systems Administration",
+]
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "mcp[cli]>=1.8.0",
+    "typer>=0.16.0",
+    "pydantic>=2.0.0",
+    "requests>=2.32.0",
+    "python-dateutil>=2.8.0",
+]
+keywords = ["rundeck", "mcp", "server", "automation", "devops"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3.5",
+    "ruff>=0.12.1",
+    "pyright>=1.1.401",
+    "coverage>=7.8.2",
+    "pytest-asyncio>=0.21.0",
+]
+
+[project.scripts]
+rundeck-mcp = "rundeck_mcp.__main__:main"
+
+[project.urls]
+Homepage = "https://github.com/your-username/rundeck-mcp-server"
+Repository = "https://github.com/your-username/rundeck-mcp-server"
+Issues = "https://github.com/your-username/rundeck-mcp-server/issues"
+Documentation = "https://github.com/your-username/rundeck-mcp-server/blob/main/README.md"
+
+[tool.setuptools]
+packages = ["rundeck_mcp"]
+
+[tool.setuptools.package-data]
+"*" = ["*.json", "*.md", "*.txt"]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "B",   # flake8-bugbear
+    "UP",  # pyupgrade
+    "SIM", # flake8-simplify
+    "I",   # isort
+]
+
+[tool.pyright]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["rundeck_mcp"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,118 @@
+{
+  "list_servers": {
+    "description": "List all configured Rundeck servers",
+    "prompt": "Shows all configured Rundeck servers with their URLs and API versions.display as a table. Use this to see which servers are available before specifying a server in other tools."
+  },
+  "get_projects": {
+    "description": "Get all Rundeck projects available in your instance",
+    "prompt": "This tool retrieves all projects from your Rundeck server. Use this to discover available projects before working with jobs or executions. Optionally specify a server name to target a specific Rundeck instance."
+  },
+  "get_jobs": {
+    "description": "Get jobs from a Rundeck project with optional filtering",
+    "prompt": "Retrieve jobs from a specific project with human-readable formatting. Jobs are organized by group with status indicators (✅ enabled, ❌ disabled, ⏰ scheduled, 🔧 manual). Perfect for browsing available jobs."
+  },
+  "get_job_definition": {
+    "description": "Get detailed job definition including options, workflow, and metadata",
+    "prompt": "Get comprehensive details about a specific job including its workflow steps, input options, scheduling configuration, and execution settings. Essential for understanding job requirements before execution.if asked to describe the job in detail, also create a flowchart avoiding special characters"
+  },
+  "run_job": {
+    "description": "Execute a Rundeck job with optional parameters",
+    "prompt": "Execute a job immediately with optional parameters and node filters. Returns execution ID for monitoring. Use get_job_definition first to understand required options."
+  },
+  "get_execution_status": {
+    "description": "Get the status and details of a job execution",
+    "prompt": "Check the current status of a running or completed job execution. Shows execution state, timing, user, and node results. Use the execution ID returned from run_job."
+  },
+  "get_execution_output": {
+    "description": "Get the output logs of a job execution",
+    "prompt": "Retrieve the complete output logs from a job execution. Useful for debugging failed jobs or reviewing execution details."
+  },
+  "get_executions": {
+    "description": "Get executions for a project with filtering options and pagination",
+    "prompt": "Query execution history with human-readable formatting showing status icons (✅ succeeded, ❌ failed, 🔄 running). Supports pagination and filtering. Returns formatted summaries by default - perfect for browsing recent activity."
+  },
+  "get_all_executions": {
+    "description": "Get all executions with automatic pagination (up to specified limit)",
+    "prompt": "Retrieve large datasets with automatic pagination and status summaries. Shows overview statistics and recent executions in human-readable format. Ideal for comprehensive project analysis and reporting."
+  },
+  "get_execution_metrics": {
+    "description": "Get comprehensive execution metrics and analytics for a project",
+    "prompt": "Generate detailed analytics including success rates, duration statistics, job frequency analysis, and performance trends over a specified time period. Perfect for project health assessment."
+  },
+  "get_system_info": {
+    "description": "Get Rundeck system information and health metrics",
+    "prompt": "Retrieve system-level information about your Rundeck instance including version, health status, and configuration details."
+  },
+  "get_project_stats": {
+    "description": "Get comprehensive statistics for a project including jobs and execution metrics",
+    "prompt": "Generate a complete project overview including job counts (total, enabled, scheduled), recent execution metrics, and project configuration. Ideal for project health dashboards."
+  },
+  "calculate_job_roi": {
+    "description": "Calculate ROI metrics for a specific job including cost analysis and value estimation",
+    "prompt": "Perform comprehensive ROI analysis for automation jobs including execution costs, estimated manual work savings, and ROI percentage. Helps justify automation investments and identify optimization opportunities."
+  },
+  "get_bulk_execution_status": {
+    "description": "Get status for multiple executions efficiently",
+    "prompt": "Check status for multiple executions in a single operation. More efficient than individual status checks when monitoring multiple jobs."
+  },
+  "run_job_with_monitoring": {
+    "description": "Execute a job with optional monitoring until completion",
+    "prompt": "Estimate the impact of the job from a risk or cost perspective, and if a risk, ask for confirmation, explaining why, ALWAYS show red amber or green square emoji and Impact assesment: at the beginning.Execute a job and wait for completion showing the output in a code box.if the job definition has options display them once as a numbered list in a table with a arrow emoji depicting if required, or optional, with the default value in brackets, Make sure required options are requested from the user before execution.Stop the job to allow the user to enter values in the form number/value.if only predefined values are available, only let these be selected before running.Do NOT run without confirmation of options or defaults. always show output. Includes timeout protection and returns final execution status. Ideal for automated workflows requiring completion confirmation."
+  },
+  "get_nodes": {
+    "description": "Get nodes for a Rundeck project with optional filtering",
+    "prompt": "Retrieve and display all nodes (servers/hosts) in a Rundeck project with human-readable formatting. Shows node names, hostnames, operating systems, and tags. Supports filtering by node attributes or tags to find specific nodes. Perfect for infrastructure discovery and node inventory management."
+  },
+  "get_node_details": {
+    "description": "Get detailed information about a specific node",
+    "prompt": "Get comprehensive details about a specific node including hostname, operating system details, architecture, version, description, tags, and all custom attributes. Essential for understanding node configuration and capabilities before job execution."
+  },
+  "get_node_summary": {
+    "description": "Get a summary of nodes in the project including counts and statistics",
+    "prompt": "Generate a comprehensive overview of all nodes in a project including total counts, operating system distribution, status breakdown, most common tags, and infrastructure statistics. Ideal for infrastructure health assessment and capacity planning."
+  },
+  "abort_execution": {
+    "description": "Abort a running execution",
+    "prompt": "ALWAYS show red square emoji and Impact assessment: HIGH RISK at the beginning. Emergency stop for running job executions. Use when jobs are consuming excessive resources, running longer than expected, or need immediate termination. Requires confirmation before proceeding. Shows abort status and provides execution details."
+  },
+  "retry_execution": {
+    "description": "Retry a failed execution",
+    "prompt": "Re-execute a failed job with optional parameter overrides. Useful for transient failures, network issues, or when conditions have been corrected. Can modify job options and node filters for the retry. Returns new execution ID for monitoring. Show green square emoji and Impact assessment: LOW RISK."
+  },
+  "delete_execution": {
+    "description": "Delete an execution from the system",
+    "prompt": "ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - DATA LOSS at the beginning. Permanently remove execution records from Rundeck. Use for cleanup, compliance, or removing sensitive execution data. Cannot be undone. Requires confirmation. Ideal for housekeeping and storage management."
+  },
+  "enable_job": {
+    "description": "Enable a job (allows execution and scheduling)",
+    "prompt": "Activate a job for both manual execution and scheduled runs. Show green square emoji and Impact assessment: LOW RISK. Use after maintenance, testing, or when bringing jobs back online. The job becomes fully operational and can be triggered manually or by schedule."
+  },
+  "disable_job": {
+    "description": "Disable a job (prevents execution and scheduling)",
+    "prompt": "ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - SERVICE IMPACT at the beginning. Completely disable a job, preventing both manual and scheduled execution. Use during maintenance, when jobs are problematic, or for temporary service suspension. Requires confirmation for production jobs."
+  },
+  "enable_job_schedule": {
+    "description": "Enable job scheduling (allows scheduled execution)",
+    "prompt": "Activate only the scheduled execution of a job while keeping manual execution available. Show green square emoji and Impact assessment: LOW RISK. Perfect for resuming automated workflows after maintenance windows. Manual job execution remains unaffected."
+  },
+  "disable_job_schedule": {
+    "description": "Disable job scheduling (prevents scheduled execution but allows manual execution)",
+    "prompt": "Disable automatic scheduled execution while preserving manual execution capability. Show amber square emoji and Impact assessment: LOW-MEDIUM RISK - AUTOMATION IMPACT. Ideal for maintenance windows, schedule coordination, or when manual control is needed. Scheduled runs stop but manual triggers still work."
+  },
+  "get_execution_mode": {
+    "description": "Get current system execution mode",
+    "prompt": "Check the global execution mode of the Rundeck system. Shows whether the system is in ACTIVE mode (normal operations) or PASSIVE mode (executions disabled). Essential for understanding system state during maintenance or troubleshooting."
+  },
+  "set_execution_mode": {
+    "description": "Set system execution mode (active or passive)",
+    "prompt": "ALWAYS show red square emoji and Impact assessment: HIGH RISK - SYSTEM-WIDE IMPACT at the beginning. Change global system execution mode. ACTIVE enables all job executions, PASSIVE disables all job executions system-wide. Critical for maintenance windows and emergency situations. Requires explicit confirmation. Affects all projects and jobs."
+  },
+  "analyze_job": {
+    "description": "Comprehensive job analysis including purpose, configuration, nodes, and risk assessment",
+    "prompt": "Perform deep analysis of a Rundeck job including complete job definition download, purpose inference, node targeting analysis, workflow step breakdown, option requirements, schedule configuration, and comprehensive risk assessment. Shows impact level with colored emoji indicators. Essential for understanding job behavior before execution, security review, and operational planning. Provides both human-readable summary and complete raw JSON data."
+  },
+  "visualize_job": {
+    "description": "Generate a visual flowchart representation of a Rundeck job",
+    "prompt": "Create a modern, interactive flowchart visualization of a Rundeck job using Mermaid diagram syntax. Shows the complete execution flow including job configuration, node filters, options, workflow steps, and error handlers. The generated Mermaid code can be rendered in various tools like Mermaid Live Editor, GitHub markdown, VS Code, Confluence, and Jira. Includes color-coded nodes for different step types, emoji indicators for visual clarity, and a comprehensive legend. Perfect for documentation, training, troubleshooting, and understanding complex job workflows at a glance."
+  }
+}

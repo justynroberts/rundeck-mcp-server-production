@@ -1,0 +1,74 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Rundeck MCP Server (Development)",
+      "type": "python",
+      "request": "launch",
+      "module": "rundeck_mcp",
+      "args": ["serve"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck-server.com",
+        "RUNDECK_API_TOKEN": "your-api-token",
+        "RUNDECK_API_VERSION": "47",
+        "RUNDECK_NAME": "development"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Rundeck MCP Server (Production)",
+      "type": "python",
+      "request": "launch",
+      "module": "rundeck_mcp",
+      "args": ["serve", "--enable-write-tools"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck-server.com",
+        "RUNDECK_API_TOKEN": "your-api-token",
+        "RUNDECK_API_VERSION": "47",
+        "RUNDECK_NAME": "production"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Rundeck MCP Server (Debug)",
+      "type": "python",
+      "request": "launch",
+      "module": "rundeck_mcp",
+      "args": ["serve", "--log-level", "DEBUG"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck-server.com",
+        "RUNDECK_API_TOKEN": "your-api-token",
+        "LOG_LEVEL": "DEBUG"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Validate Configuration",
+      "type": "python",
+      "request": "launch",
+      "module": "rundeck_mcp",
+      "args": ["validate"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck-server.com",
+        "RUNDECK_API_TOKEN": "your-api-token"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    },
+    {
+      "name": "Generate Claude Config",
+      "type": "python",
+      "request": "launch",
+      "program": "tests/get_claude_config.py",
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck-server.com",
+        "RUNDECK_API_TOKEN": "your-api-token"
+      },
+      "console": "integratedTerminal",
+      "justMyCode": false
+    }
+  ]
+}
