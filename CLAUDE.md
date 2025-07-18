@@ -213,6 +213,25 @@ The server integrates with Claude Desktop via MCP protocol:
        # Test implementation
    ```
 
+### Server vs Project Distinction
+
+**IMPORTANT**: When executing jobs, understand the distinction between:
+- **Server**: The Rundeck server alias configured in environment variables (e.g., "demo", "production")
+- **Project**: The project within that server where the job resides (e.g., "global-production", "dev-apps")
+
+Example scenario:
+- You have a server configured with alias "demo" (via RUNDECK_URL and RUNDECK_API_TOKEN)
+- That server contains a project called "global-production"
+- To run a job in that project, use `server="demo"` (NOT "global-production")
+
+```python
+# CORRECT - Using server alias:
+run_job(job_id="02fced35-9858-4ddc-902b-13044206163a", server="demo")
+
+# INCORRECT - Using project name as server:
+run_job(job_id="02fced35-9858-4ddc-902b-13044206163a", server="global-production")
+```
+
 ### Job Analysis Tools
 
 Advanced job understanding and risk assessment:
@@ -237,6 +256,30 @@ Comprehensive infrastructure inventory:
 1. **`get_nodes(project, filter_query?, server?)`**: Node discovery with filtering
 2. **`get_node_details(project, node_name, server?)`**: Detailed node information
 3. **`get_node_summary(project, server?)`**: Statistical infrastructure overview
+
+### Common Usage Examples
+
+#### Running Jobs with Monitoring
+```python
+# Example: Running a job in the "global-production" project on the "demo" server
+result = run_job_with_monitoring(
+    job_id="02fced35-9858-4ddc-902b-13044206163a",
+    options={
+        "application": "Grafana",
+        "Namespace": "mcp_rocks"
+    },
+    server="demo"  # Use server alias, not project name!
+)
+```
+
+#### Listing Jobs in a Project
+```python
+# List all jobs in the "global-production" project on "demo" server
+jobs = get_jobs(
+    project="global-production",  # Project name
+    server="demo"                 # Server alias
+)
+```
 
 ### Error Handling
 - Use `client._make_request()` for all API calls

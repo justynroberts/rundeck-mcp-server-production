@@ -1,11 +1,11 @@
 """Rundeck MCP tools."""
 
-from .projects import project_tools
-from .jobs import job_tools
-from .executions import execution_tools
-from .nodes import node_tools
-from .system import system_tools
 from .analytics import analytics_tools
+from .executions import execution_tools
+from .jobs import job_tools
+from .nodes import node_tools
+from .projects import project_tools
+from .system import system_tools
 
 # Separate read-only and write tools
 read_tools = [

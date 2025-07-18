@@ -1,14 +1,16 @@
 """Rundeck-specific models."""
 
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
+
 from pydantic import Field, computed_field
+
 from .base import BaseModel
 
 
 class Server(BaseModel):
     """Rundeck server configuration."""
-    
+
     name: str = Field(description="Server identifier name")
     url: str = Field(description="Server URL")
     api_version: str = Field(default="47", description="API version")
@@ -17,12 +19,12 @@ class Server(BaseModel):
 
 class Project(BaseModel):
     """Rundeck project model."""
-    
+
     name: str = Field(description="Project name")
-    description: Optional[str] = Field(None, description="Project description")
-    url: Optional[str] = Field(None, description="Project URL")
-    config: Optional[Dict[str, Any]] = Field(None, description="Project configuration")
-    
+    description: str | None = Field(None, description="Project description")
+    url: str | None = Field(None, description="Project URL")
+    config: dict[str, Any] | None = Field(None, description="Project configuration")
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -33,16 +35,16 @@ class Project(BaseModel):
 
 class Job(BaseModel):
     """Rundeck job model."""
-    
+
     id: str = Field(description="Job ID")
     name: str = Field(description="Job name")
-    group: Optional[str] = Field(None, description="Job group")
+    group: str | None = Field(None, description="Job group")
     project: str = Field(description="Project name")
-    description: Optional[str] = Field(None, description="Job description")
+    description: str | None = Field(None, description="Job description")
     enabled: bool = Field(default=True, description="Whether job is enabled")
     scheduled: bool = Field(default=False, description="Whether job is scheduled")
     schedule_enabled: bool = Field(default=False, description="Whether schedule is enabled")
-    
+
     @computed_field
     @property
     def full_name(self) -> str:
@@ -50,7 +52,7 @@ class Job(BaseModel):
         if self.group:
             return f"{self.group}/{self.name}"
         return self.name
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -62,26 +64,26 @@ class Job(BaseModel):
 
 class JobDefinition(BaseModel):
     """Complete job definition."""
-    
+
     id: str = Field(description="Job ID")
     name: str = Field(description="Job name")
-    group: Optional[str] = Field(None, description="Job group")
+    group: str | None = Field(None, description="Job group")
     project: str = Field(description="Project name")
-    description: Optional[str] = Field(None, description="Job description")
+    description: str | None = Field(None, description="Job description")
     enabled: bool = Field(default=True, description="Whether job is enabled")
     scheduled: bool = Field(default=False, description="Whether job is scheduled")
     schedule_enabled: bool = Field(default=False, description="Whether schedule is enabled")
-    workflow: List[Dict[str, Any]] = Field(default_factory=list, description="Job workflow steps")
-    options: List[Dict[str, Any]] = Field(default_factory=list, description="Job options")
-    node_filter: Optional[Dict[str, Any]] = Field(None, description="Node filter configuration")
-    schedule: Optional[Dict[str, Any]] = Field(None, description="Schedule configuration")
-    
+    workflow: list[dict[str, Any]] = Field(default_factory=list, description="Job workflow steps")
+    options: list[dict[str, Any]] = Field(default_factory=list, description="Job options")
+    node_filter: dict[str, Any] | None = Field(None, description="Node filter configuration")
+    schedule: dict[str, Any] | None = Field(None, description="Schedule configuration")
+
     @computed_field
     @property
     def step_count(self) -> int:
         """Number of workflow steps."""
         return len(self.workflow)
-    
+
     @computed_field
     @property
     def option_count(self) -> int:
@@ -91,28 +93,28 @@ class JobDefinition(BaseModel):
 
 class JobExecution(BaseModel):
     """Job execution model."""
-    
+
     id: str = Field(description="Execution ID")
     job_id: str = Field(description="Job ID")
     project: str = Field(description="Project name")
     status: str = Field(description="Execution status")
-    start_time: Optional[datetime] = Field(None, description="Execution start time")
-    end_time: Optional[datetime] = Field(None, description="Execution end time")
-    duration: Optional[int] = Field(None, description="Execution duration in milliseconds")
-    user: Optional[str] = Field(None, description="User who started the execution")
-    
+    start_time: datetime | None = Field(None, description="Execution start time")
+    end_time: datetime | None = Field(None, description="Execution end time")
+    duration: int | None = Field(None, description="Execution duration in milliseconds")
+    user: str | None = Field(None, description="User who started the execution")
+
     @computed_field
     @property
     def is_running(self) -> bool:
         """Whether the execution is currently running."""
         return self.status.lower() in ["running", "started"]
-    
+
     @computed_field
     @property
     def is_completed(self) -> bool:
         """Whether the execution has completed."""
         return self.status.lower() in ["succeeded", "failed", "aborted"]
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -122,32 +124,28 @@ class JobExecution(BaseModel):
 
 class JobAnalysis(BaseModel):
     """Job analysis result."""
-    
+
     job_id: str = Field(description="Job ID")
     job_name: str = Field(description="Job name")
     purpose: str = Field(description="Inferred job purpose")
     risk_level: str = Field(description="Risk level (HIGH/MEDIUM/LOW)")
-    risk_factors: List[str] = Field(default_factory=list, description="Risk factors identified")
+    risk_factors: list[str] = Field(default_factory=list, description="Risk factors identified")
     workflow_summary: str = Field(description="Workflow summary")
     node_targeting: str = Field(description="Node targeting configuration")
     options_summary: str = Field(description="Options summary")
-    schedule_summary: Optional[str] = Field(None, description="Schedule summary")
-    recommendations: List[str] = Field(default_factory=list, description="Recommendations")
-    
+    schedule_summary: str | None = Field(None, description="Schedule summary")
+    recommendations: list[str] = Field(default_factory=list, description="Recommendations")
+
     @computed_field
     @property
     def risk_emoji(self) -> str:
         """Risk level emoji indicator."""
-        return {
-            "HIGH": "🔴",
-            "MEDIUM": "🟡",
-            "LOW": "🟢"
-        }.get(self.risk_level, "⚪")
+        return {"HIGH": "🔴", "MEDIUM": "🟡", "LOW": "🟢"}.get(self.risk_level, "⚪")
 
 
 class JobVisualization(BaseModel):
     """Job visualization data."""
-    
+
     job_id: str = Field(description="Job ID")
     job_name: str = Field(description="Job name")
     mermaid_diagram: str = Field(description="Mermaid diagram code")
@@ -157,22 +155,22 @@ class JobVisualization(BaseModel):
 
 class Node(BaseModel):
     """Rundeck node model."""
-    
+
     name: str = Field(description="Node name")
     hostname: str = Field(description="Node hostname")
-    os_name: Optional[str] = Field(None, description="Operating system name")
-    os_version: Optional[str] = Field(None, description="Operating system version")
-    os_arch: Optional[str] = Field(None, description="Operating system architecture")
-    tags: List[str] = Field(default_factory=list, description="Node tags")
-    attributes: Dict[str, Any] = Field(default_factory=dict, description="Node attributes")
-    
+    os_name: str | None = Field(None, description="Operating system name")
+    os_version: str | None = Field(None, description="Operating system version")
+    os_arch: str | None = Field(None, description="Operating system architecture")
+    tags: list[str] = Field(default_factory=list, description="Node tags")
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Node attributes")
+
     @computed_field
     @property
     def os_summary(self) -> str:
         """Operating system summary."""
         parts = [self.os_name, self.os_version, self.os_arch]
         return " ".join(filter(None, parts)) or "Unknown"
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -182,20 +180,20 @@ class Node(BaseModel):
 
 class NodeDetails(BaseModel):
     """Detailed node information."""
-    
+
     name: str = Field(description="Node name")
     hostname: str = Field(description="Node hostname")
-    os_name: Optional[str] = Field(None, description="Operating system name")
-    os_version: Optional[str] = Field(None, description="Operating system version")
-    os_arch: Optional[str] = Field(None, description="Operating system architecture")
-    description: Optional[str] = Field(None, description="Node description")
-    tags: List[str] = Field(default_factory=list, description="Node tags")
-    attributes: Dict[str, Any] = Field(default_factory=dict, description="Node attributes")
-    status: Optional[str] = Field(None, description="Node status")
-    
+    os_name: str | None = Field(None, description="Operating system name")
+    os_version: str | None = Field(None, description="Operating system version")
+    os_arch: str | None = Field(None, description="Operating system architecture")
+    description: str | None = Field(None, description="Node description")
+    tags: list[str] = Field(default_factory=list, description="Node tags")
+    attributes: dict[str, Any] = Field(default_factory=dict, description="Node attributes")
+    status: str | None = Field(None, description="Node status")
+
     @computed_field
     @property
-    def capabilities(self) -> List[str]:
+    def capabilities(self) -> list[str]:
         """Node capabilities extracted from attributes."""
         capabilities = []
         if self.attributes.get("ssh-key-storage-path"):
@@ -209,12 +207,12 @@ class NodeDetails(BaseModel):
 
 class NodeSummary(BaseModel):
     """Statistical summary of nodes."""
-    
+
     total_nodes: int = Field(description="Total number of nodes")
-    os_distribution: Dict[str, int] = Field(default_factory=dict, description="OS distribution")
-    status_breakdown: Dict[str, int] = Field(default_factory=dict, description="Status breakdown")
-    common_tags: List[str] = Field(default_factory=list, description="Most common tags")
-    
+    os_distribution: dict[str, int] = Field(default_factory=dict, description="OS distribution")
+    status_breakdown: dict[str, int] = Field(default_factory=dict, description="Status breakdown")
+    common_tags: list[str] = Field(default_factory=list, description="Most common tags")
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -224,14 +222,14 @@ class NodeSummary(BaseModel):
 
 class ExecutionStatus(BaseModel):
     """Execution status information."""
-    
+
     id: str = Field(description="Execution ID")
     status: str = Field(description="Current status")
-    start_time: Optional[datetime] = Field(None, description="Start time")
-    end_time: Optional[datetime] = Field(None, description="End time")
-    duration: Optional[int] = Field(None, description="Duration in milliseconds")
-    progress: Optional[float] = Field(None, description="Progress percentage")
-    
+    start_time: datetime | None = Field(None, description="Start time")
+    end_time: datetime | None = Field(None, description="End time")
+    duration: int | None = Field(None, description="Duration in milliseconds")
+    progress: float | None = Field(None, description="Progress percentage")
+
     @computed_field
     @property
     def is_final(self) -> bool:
@@ -241,14 +239,14 @@ class ExecutionStatus(BaseModel):
 
 class ExecutionMetrics(BaseModel):
     """Execution metrics and analytics."""
-    
+
     total_executions: int = Field(description="Total number of executions")
     success_rate: float = Field(description="Success rate percentage")
     average_duration: float = Field(description="Average duration in seconds")
     failure_rate: float = Field(description="Failure rate percentage")
-    most_active_users: List[str] = Field(default_factory=list, description="Most active users")
-    execution_trends: Dict[str, Any] = Field(default_factory=dict, description="Execution trends")
-    
+    most_active_users: list[str] = Field(default_factory=list, description="Most active users")
+    execution_trends: dict[str, Any] = Field(default_factory=dict, description="Execution trends")
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -258,14 +256,14 @@ class ExecutionMetrics(BaseModel):
 
 class SystemInfo(BaseModel):
     """System information."""
-    
+
     rundeck_version: str = Field(description="Rundeck version")
     api_version: str = Field(description="API version")
     server_name: str = Field(description="Server name")
     server_uuid: str = Field(description="Server UUID")
-    build_info: Dict[str, Any] = Field(default_factory=dict, description="Build information")
-    system_stats: Dict[str, Any] = Field(default_factory=dict, description="System statistics")
-    
+    build_info: dict[str, Any] = Field(default_factory=dict, description="Build information")
+    system_stats: dict[str, Any] = Field(default_factory=dict, description="System statistics")
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -275,13 +273,13 @@ class SystemInfo(BaseModel):
 
 class ProjectStats(BaseModel):
     """Project statistics."""
-    
+
     project_name: str = Field(description="Project name")
     job_count: int = Field(description="Number of jobs")
     execution_count: int = Field(description="Number of executions")
     node_count: int = Field(description="Number of nodes")
     active_executions: int = Field(description="Number of active executions")
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -291,7 +289,7 @@ class ProjectStats(BaseModel):
 
 class ROIAnalysis(BaseModel):
     """ROI analysis for job automation."""
-    
+
     job_id: str = Field(description="Job ID")
     manual_time_hours: float = Field(description="Manual execution time in hours")
     automation_time_hours: float = Field(description="Automated execution time in hours")
@@ -300,7 +298,7 @@ class ROIAnalysis(BaseModel):
     monthly_savings: float = Field(description="Monthly savings in currency")
     annual_savings: float = Field(description="Annual savings in currency")
     roi_percentage: float = Field(description="ROI percentage")
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -310,11 +308,11 @@ class ROIAnalysis(BaseModel):
 
 class ExecutionMode(BaseModel):
     """System execution mode."""
-    
+
     mode: str = Field(description="Execution mode (active/passive)")
     is_active: bool = Field(description="Whether executions are active")
-    message: Optional[str] = Field(None, description="Mode message")
-    
+    message: str | None = Field(None, description="Mode message")
+
     @computed_field
     @property
     def summary(self) -> str:
