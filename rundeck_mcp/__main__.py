@@ -78,7 +78,7 @@ def validate():
 
     if validation["servers"]:
         typer.echo("\\n🔧 Configured Servers:")
-        for server_id, config in validation["servers"].items():
+        for _server_id, config in validation["servers"].items():
             typer.echo(f"  - {config['name']}: {config['url']} (API v{config['api_version']})")
 
     if validation["valid"]:

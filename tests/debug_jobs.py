@@ -36,7 +36,9 @@ class TestJobAnalysis(unittest.TestCase):
                     {
                         "type": "command",
                         "description": "Deploy new version",
-                        "command": "curl -O https://releases.company.com/webapp-latest.tar.gz && tar -xzf webapp-latest.tar.gz",
+                        "command": (
+                            "curl -O https://releases.company.com/webapp-latest.tar.gz && tar -xzf webapp-latest.tar.gz"
+                        ),
                     },
                     {
                         "type": "command",

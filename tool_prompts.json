@@ -19,6 +19,18 @@
     "description": "Execute a Rundeck job with optional parameters",
     "prompt": "Execute a job immediately with optional parameters and node filters. Returns execution ID for monitoring. Use get_job_definition first to understand required options."
   },
+  "create_job": {
+    "description": "Create a new Rundeck job in a project",
+    "prompt": "Create a new job with specified command, options, and configuration. Requires project name, job name, and command. Supports optional scheduling, node filtering, timeouts, and job options. Use this to automate job creation. Always confirm job details before creation and show a summary of what will be created."
+  },
+  "create_job_from_yaml": {
+    "description": "Create job(s) from YAML definition",
+    "prompt": "Import jobs directly from YAML format. Accepts complete job definitions in Rundeck YAML format. Validates YAML structure and required fields before import. Perfect for importing existing job definitions or complex jobs with multiple steps. Show YAML validation results and import summary."
+  },
+  "create_multiple_jobs_from_yaml": {
+    "description": "Create multiple jobs from YAML file content",
+    "prompt": "Bulk import multiple jobs from a single YAML file content. Supports importing entire job collections at once. Validates all job definitions before import and provides detailed results showing succeeded, failed, and skipped jobs. Ideal for migrating or deploying job collections."
+  },
   "get_execution_status": {
     "description": "Get the status and details of a job execution",
     "prompt": "Check the current status of a running or completed job execution. Shows execution state, timing, user, and node results. Use the execution ID returned from run_job."

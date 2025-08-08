@@ -1,6 +1,5 @@
 """Node management tools."""
 
-
 from ..client import get_client
 from ..models.base import ListResponseModel
 from ..models.rundeck import Node, NodeDetails, NodeSummary
@@ -83,7 +82,6 @@ def get_node_summary(project: str, server: str | None = None) -> NodeSummary:
     Returns:
         Node summary statistics
     """
-    client = get_client(server)
     nodes_response = get_nodes(project, server=server)
     nodes = nodes_response.response
 

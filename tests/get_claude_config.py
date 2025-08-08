@@ -53,7 +53,7 @@ def collect_environment_variables() -> dict[str, str]:
 def generate_claude_desktop_config(enable_write_tools: bool = False) -> dict[str, Any]:
     """Generate Claude Desktop configuration."""
     python_executable = get_python_executable()
-    server_script = get_server_script_path()
+    _server_script = get_server_script_path()  # For validation
     env_vars = collect_environment_variables()
 
     # Base configuration
@@ -157,7 +157,7 @@ def main():
     print()
 
     # Collect environment info
-    env_vars = collect_environment_variables()
+    _env_vars = collect_environment_variables()  # For validation
     server_count = 1  # Primary server
 
     # Count additional servers

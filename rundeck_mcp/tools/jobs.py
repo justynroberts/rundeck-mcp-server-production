@@ -2,6 +2,8 @@
 
 from typing import Any
 
+import yaml
+
 from ..client import get_client
 from ..models.base import ListResponseModel
 from ..models.rundeck import Job, JobAnalysis, JobDefinition, JobVisualization
@@ -82,7 +84,6 @@ def analyze_job(job_id: str, server: str | None = None) -> JobAnalysis:
     Returns:
         Job analysis with risk assessment
     """
-    client = get_client(server)
     job_def = get_job_definition(job_id, server)
 
     # Analyze job purpose
@@ -203,7 +204,6 @@ def visualize_job(job_id: str, server: str | None = None) -> JobVisualization:
     Returns:
         Job visualization data
     """
-    client = get_client(server)
     job_def = get_job_definition(job_id, server)
 
     # Generate Mermaid diagram
@@ -446,6 +446,224 @@ def disable_job_schedule(job_id: str, server: str | None = None) -> dict[str, An
     return client._make_request("POST", f"job/{job_id}/schedule/disable")
 
 
+def create_job(
+    project: str,
+    name: str,
+    command: str,
+    description: str = "",
+    group: str | None = None,
+    options: dict[str, Any] | None = None,
+    schedule: dict[str, Any] | None = None,
+    node_filter: dict[str, Any] | None = None,
+    timeout: str | None = None,
+    retry_count: int | None = None,
+    execution_enabled: bool = True,
+    schedule_enabled: bool = True,
+    multiple_executions: bool = False,
+    log_level: str = "INFO",
+    dupe_option: str = "create",
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Create a new Rundeck job.
+
+    Args:
+        project: Project name where job will be created
+        name: Job name
+        command: Command to execute
+        description: Job description (optional)
+        group: Job group name (optional)
+        options: Job input options (optional)
+        schedule: Schedule configuration (optional, e.g., {"cron": "0 0 * * *"})
+        node_filter: Node targeting configuration (optional)
+        timeout: Maximum runtime (optional, e.g., "30m")
+        retry_count: Number of retry attempts (optional)
+        execution_enabled: Whether job execution is enabled
+        schedule_enabled: Whether job schedule is enabled
+        multiple_executions: Allow concurrent executions
+        log_level: Logging level (DEBUG, VERBOSE, INFO, WARN, ERROR)
+        dupe_option: Behavior for duplicate jobs (create, update, skip)
+        server: Server name/alias to use (e.g., "demo"), not the project name
+
+    Returns:
+        Job creation response
+
+    Example:
+        create_job(
+            project="my-project",
+            name="Hello World Job",
+            command="echo 'Hello, World!'",
+            description="A simple greeting job",
+            group="examples",
+            schedule={"cron": "0 9 * * MON-FRI"},
+            server="demo"
+        )
+    """
+    client = get_client(server)
+
+    # Build the job definition in YAML format
+    job_def = {
+        "name": name,
+        "description": description,
+        "group": group,
+        "loglevel": log_level,
+        "multipleExecutions": multiple_executions,
+        "executionEnabled": execution_enabled,
+        "scheduleEnabled": schedule_enabled,
+        "sequence": {"keepgoing": False, "strategy": "node-first", "commands": [{"exec": command}]},
+    }
+
+    # Add optional fields
+    if options:
+        job_def["options"] = options
+
+    if schedule:
+        if "cron" in schedule:
+            job_def["schedule"] = {"crontab": schedule["cron"]}
+        else:
+            job_def["schedule"] = schedule
+
+    if node_filter:
+        job_def["nodefilters"] = node_filter
+
+    if timeout:
+        job_def["timeout"] = timeout
+
+    if retry_count:
+        job_def["retry"] = str(retry_count)
+
+    # Convert to YAML format (list format for job import)
+    job_yaml = yaml.dump([job_def], default_flow_style=False)
+
+    # Import the job via the API
+    headers = {"Content-Type": "application/yaml"}
+    params = {"fileformat": "yaml", "dupeOption": dupe_option}
+
+    response = client._make_request(
+        "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
+    )
+
+    return response
+
+
+def create_job_from_yaml(
+    project: str,
+    job_yaml: str,
+    dupe_option: str = "create",
+    uuid_option: str = "remove",
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Create job(s) from YAML definition.
+
+    Args:
+        project: Project name where jobs will be created
+        job_yaml: YAML string containing job definition(s)
+        dupe_option: Behavior for duplicate jobs (create, update, skip)
+        uuid_option: UUID handling (preserve, remove)
+        server: Server name/alias to use (e.g., "demo"), not the project name
+
+    Returns:
+        Job import response
+
+    Example:
+        yaml_content = '''
+        - name: Hello World Job
+          description: A simple greeting job
+          loglevel: INFO
+          sequence:
+            keepgoing: false
+            strategy: node-first
+            commands:
+              - exec: echo "Hello, World!"
+          schedule:
+            crontab: "0 9 * * MON-FRI"
+        '''
+
+        create_job_from_yaml(
+            project="my-project",
+            job_yaml=yaml_content,
+            server="demo"
+        )
+    """
+    client = get_client(server)
+
+    # Validate YAML format
+    try:
+        parsed_jobs = yaml.safe_load(job_yaml)
+        if not isinstance(parsed_jobs, list):
+            raise ValueError("YAML must contain a list of job definitions")
+
+        # Basic validation
+        for i, job in enumerate(parsed_jobs):
+            if not isinstance(job, dict):
+                raise ValueError(f"Job {i + 1} must be a dictionary")
+            if "name" not in job:
+                raise ValueError(f"Job {i + 1} missing required 'name' field")
+            if "sequence" not in job:
+                raise ValueError(f"Job {i + 1} missing required 'sequence' field")
+
+    except yaml.YAMLError as e:
+        raise ValueError(f"Invalid YAML format: {e}") from e
+    except Exception as e:
+        raise ValueError(f"YAML validation failed: {e}") from e
+
+    # Import the jobs via the API
+    headers = {"Content-Type": "application/yaml"}
+    params = {"fileformat": "yaml", "dupeOption": dupe_option, "uuidOption": uuid_option}
+
+    response = client._make_request(
+        "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
+    )
+
+    return response
+
+
+def create_multiple_jobs_from_yaml(
+    project: str,
+    yaml_file_content: str,
+    dupe_option: str = "create",
+    uuid_option: str = "remove",
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Create multiple jobs from a YAML file content.
+
+    Args:
+        project: Project name where jobs will be created
+        yaml_file_content: Full YAML file content with multiple job definitions
+        dupe_option: Behavior for duplicate jobs (create, update, skip)
+        uuid_option: UUID handling (preserve, remove)
+        server: Server name/alias to use (e.g., "demo"), not the project name
+
+    Returns:
+        Job import response with details of succeeded/failed/skipped jobs
+
+    Example:
+        yaml_content = '''
+        - name: Job 1
+          description: First job
+          loglevel: INFO
+          sequence:
+            commands:
+              - exec: echo "Job 1"
+
+        - name: Job 2
+          description: Second job
+          loglevel: INFO
+          sequence:
+            commands:
+              - exec: echo "Job 2"
+        '''
+
+        create_multiple_jobs_from_yaml(
+            project="my-project",
+            yaml_file_content=yaml_content,
+            server="demo"
+        )
+    """
+    return create_job_from_yaml(
+        project=project, job_yaml=yaml_file_content, dupe_option=dupe_option, uuid_option=uuid_option, server=server
+    )
+
+
 # Tool definitions
 job_tools = {
     "read": [
@@ -457,6 +675,9 @@ job_tools = {
     "write": [
         run_job,
         run_job_with_monitoring,
+        create_job,
+        create_job_from_yaml,
+        create_multiple_jobs_from_yaml,
         enable_job,
         disable_job,
         enable_job_schedule,

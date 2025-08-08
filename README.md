@@ -1,310 +1,318 @@
 # Rundeck MCP Server
 
-Rundeck's local MCP (Model Context Protocol) server which provides tools to interact with your Rundeck automation platform, allowing you to manage projects, jobs, executions, nodes, and more directly from your MCP-enabled client.
+A production-ready MCP (Model Context Protocol) server for Rundeck automation platform. Manage projects, jobs, executions, and infrastructure directly from Claude Desktop or any MCP-enabled client.
 
-## Prerequisites
+## 🚀 Quick Start
 
-- Python 3.12 or higher installed
-- `uv` installed globally
-- A Rundeck API Token
+### Prerequisites
 
-To obtain a Rundeck API Token, follow these steps:
+1. **Python 3.12+** installed
+2. **Rundeck API Token** (see [Getting a Token](#getting-a-rundeck-api-token))
+3. **uv** package manager (see [Installing uv](#installing-uv))
 
-1. Navigate to your Rundeck server and log in
-2. Click on your user profile icon, then select **User Profile**
-3. In your user profile, locate the **API Tokens** section
-4. Click the **Generate API Token** button and follow the prompts to create a new token
-5. Copy the generated token and store it securely. You will need this token to configure the MCP server
+### Installing uv
 
-## Using with MCP Clients
+uv is a fast, modern Python package manager. Install it using one of these methods:
 
-### VS Code Integration
+#### macOS/Linux
+```bash
+# Using curl
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-You can configure this MCP server directly within Visual Studio Code's settings.json file, allowing VS Code to manage the server lifecycle.
-
-1. Open VS Code settings (File > Preferences > Settings, or `Cmd+,` on Mac, or `Ctrl+,` on Windows/Linux)
-2. Search for "mcp" and ensure "Mcp: Enabled" is checked under Features > Chat
-3. Click "Edit in settings.json" under "Mcp > Discovery: Servers"
-4. Add the following configuration:
-
-```json
-{
-    "mcp": {
-        "inputs": [
-            {
-                "type": "promptString",
-                "id": "rundeck-api-token",
-                "description": "Rundeck API Token",
-                "password": true
-            }
-        ],
-        "servers": {
-            "rundeck-mcp": { 
-                "type": "stdio",
-                "command": "uvx",
-                "args": [
-                    "rundeck-mcp-server",
-                    "serve",
-                    "--enable-write-tools"
-                    // This flag enables write operations on the MCP Server enabling you to run jobs, manage executions and much more
-                ],
-                "env": {
-                    "RUNDECK_URL": "https://your-rundeck-server.com",
-                    "RUNDECK_API_TOKEN": "${input:rundeck-api-token}",
-                    "RUNDECK_API_VERSION": "47"
-                    // Update to your server's API version if different
-                }
-            }
-        }
-    }
-}
+# Or using Homebrew
+brew install uv
 ```
 
-#### Trying it in VS Code Chat (Agent)
+#### Windows
+```powershell
+# Using PowerShell
+powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
-1. Ensure MCP is enabled in VS Code settings (Features > Chat > "Mcp: Enabled")
-2. Configure the server as described above
-3. Open the Chat view in VS Code (View > Chat)
-4. Make sure Agent mode is selected. In the Chat view, you can enable or disable specific tools by clicking the 🛠️ icon
-5. Enter a command such as "Show me all projects" to interact with your Rundeck server through the MCP server
-
-You can start, stop, and manage your MCP servers using the command palette (`Cmd+Shift+P`/`Ctrl+Shift+P`) and searching for "MCP: List Servers". Ensure the server is running before sending commands. You can also try to restart the server if you encounter any issues.
-
-### Claude Desktop Integration
-
-You can configure this MCP server to work with Claude Desktop by adding it to Claude's configuration file.
-
-1. Locate your Claude Desktop configuration file:
-   - **macOS**: `~/Library/Application Support/Claude/claude_desktop_config.json`
-   - **Windows**: `%APPDATA%\Claude\claude_desktop_config.json`
-   - **Linux**: `~/.config/claude/claude_desktop_config.json`
-
-2. Create or edit the configuration file and add the following configuration:
-
-```json
-{
-  "mcpServers": {
-    "rundeck-mcp": {
-      "command": "uvx",
-      "args": [
-        "rundeck-mcp-server",
-        "serve",
-        "--enable-write-tools"
-      ],
-      "env": {
-        "RUNDECK_URL": "https://your-rundeck-server.com",
-        "RUNDECK_API_TOKEN": "your-rundeck-api-token-here",
-        "RUNDECK_API_VERSION": "47"
-      }
-    }
-  }
-}
+# Or using Scoop
+scoop install uv
 ```
 
-3. Replace the placeholder values:
-   - Replace `https://your-rundeck-server.com` with your actual Rundeck server URL
-   - Replace `your-rundeck-api-token-here` with your actual Rundeck API Token
-   - Update `RUNDECK_API_VERSION` if your server uses a different API version
-
-4. Restart Claude Desktop completely for the changes to take effect
-
-5. Test the integration by starting a conversation with Claude and asking something like "Show me all my Rundeck projects" to verify the MCP server is working
-
-**Security Note**: Unlike VS Code's secure input prompts, Claude Desktop requires you to store your API token directly in the configuration file. Ensure this file has appropriate permissions (readable only by your user account) and consider the security implications of storing credentials in plain text.
-
-### Multi-Server Configuration
-
-For multiple Rundeck environments, you can configure additional servers:
-
-```json
-{
-  "mcpServers": {
-    "rundeck-mcp": {
-      "command": "uvx",
-      "args": [
-        "rundeck-mcp-server",
-        "serve",
-        "--enable-write-tools"
-      ],
-      "env": {
-        "RUNDECK_URL": "https://prod.rundeck.com",
-        "RUNDECK_API_TOKEN": "prod-token",
-        "RUNDECK_NAME": "production",
-        "RUNDECK_URL_1": "https://dev.rundeck.com",
-        "RUNDECK_API_TOKEN_1": "dev-token",
-        "RUNDECK_NAME_1": "development",
-        "RUNDECK_URL_2": "https://staging.rundeck.com",
-        "RUNDECK_API_TOKEN_2": "staging-token",
-        "RUNDECK_NAME_2": "staging"
-      }
-    }
-  }
-}
+#### Verify Installation
+```bash
+uv --version
 ```
 
-## Set up locally
-
-### Clone the repository
+### Installation
 
 ```bash
-git clone https://github.com/your-username/rundeck-mcp-server.git
+# Clone the repository
+git clone https://github.com/yourusername/rundeck-mcp-server.git
 cd rundeck-mcp-server
+
+# Install with uv (creates virtual environment automatically)
+uv sync
+
+# Or install globally with uvx for direct use
+uvx install rundeck-mcp-server
 ```
 
-### Install dependencies
+### Configuration
+
+Set your Rundeck environment variables:
 
 ```bash
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install with development dependencies
-pip install -e ".[dev]"
+export RUNDECK_URL="https://rundeck.example.com"
+export RUNDECK_API_TOKEN="your-api-token-here"
+export RUNDECK_API_VERSION="47"  # Optional, defaults to 47
 ```
 
-### Configure environment
+### Running the Server
 
 ```bash
-# Copy example environment file
-cp .env.example .env
+# Development mode (read-only)
+uv run rundeck-mcp serve
 
-# Edit with your Rundeck server details
-nano .env
+# Production mode (with write operations)
+uv run rundeck-mcp serve --enable-write-tools
+
+# Or if installed globally with uvx
+uvx rundeck-mcp-server serve --enable-write-tools
 ```
 
-### Ensure uv is available globally
+## 📦 Deployment
 
-The MCP server can be run from different places so you need `uv` to be available globally. To do so, follow the [official documentation](https://docs.astral.sh/uv/getting-started/installation/).
+### Production Deployment
 
-**Tip**: You may need to restart your terminal and/or VS Code for the changes to take effect.
+1. **Environment Setup**
+   ```bash
+   # Create production environment file
+   cat > .env.production << EOF
+   RUNDECK_URL=https://your-rundeck.com
+   RUNDECK_API_TOKEN=your-production-token
+   RUNDECK_API_VERSION=47
+   EOF
+   ```
 
-## Run it locally
+2. **Install Dependencies**
+   ```bash
+   # Install in production mode
+   uv sync --no-dev
+   ```
 
-To run your cloned Rundeck MCP Server you need to update your configuration to use `uv` instead of `uvx`.
+3. **Run Server**
+   ```bash
+   # Start with production settings
+   source .env.production
+   uv run rundeck-mcp serve --enable-write-tools
+   ```
+
+### Docker Deployment
+
+```dockerfile
+FROM python:3.12-slim
+
+# Install uv
+RUN pip install uv
+
+# Copy application
+WORKDIR /app
+COPY . .
+
+# Install dependencies
+RUN uv sync --no-dev
+
+# Run server
+CMD ["uv", "run", "rundeck-mcp", "serve", "--enable-write-tools"]
+```
+
+### Systemd Service (Linux)
+
+Create `/etc/systemd/system/rundeck-mcp.service`:
+
+```ini
+[Unit]
+Description=Rundeck MCP Server
+After=network.target
+
+[Service]
+Type=simple
+User=rundeck-mcp
+WorkingDirectory=/opt/rundeck-mcp-server
+Environment="RUNDECK_URL=https://your-rundeck.com"
+Environment="RUNDECK_API_TOKEN=your-token"
+ExecStart=/usr/local/bin/uv run rundeck-mcp serve --enable-write-tools
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+```
+
+Enable and start:
+```bash
+sudo systemctl enable rundeck-mcp
+sudo systemctl start rundeck-mcp
+```
+
+## 🔧 Claude Desktop Integration
+
+### Automatic Configuration
+
+```bash
+# Generate Claude Desktop configuration
+uv run python tests/get_claude_config.py --write-tools
+
+# Config will be saved to ~/Library/Application Support/Claude/claude_desktop_config.json
+```
+
+### Manual Configuration
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ```json
 {
-    "mcp": {
-        "servers": {
-            "rundeck-mcp": { 
-                "type": "stdio",
-                "command": "uv",
-                "args": [
-                    "run",
-                    "--directory",
-                    "/path/to/your/mcp-server-directory",
-                    // Replace with the full path to the directory where you cloned the MCP server, e.g. "/Users/yourname/code/rundeck-mcp-server"     
-                    "python",
-                    "-m",
-                    "rundeck_mcp",
-                    "serve",
-                    "--enable-write-tools"
-                    // This flag enables write operations on the MCP Server enabling you to run jobs, manage executions and much more
-                ],
-                "env": {
-                    "RUNDECK_URL": "https://your-rundeck-server.com",
-                    "RUNDECK_API_TOKEN": "${input:rundeck-api-token}",
-                    "RUNDECK_API_VERSION": "47"
-                    // Update to your server's API version if different
-                }
-            }
-        }
+  "mcpServers": {
+    "rundeck": {
+      "command": "uvx",
+      "args": ["rundeck-mcp-server", "serve", "--enable-write-tools"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck.com",
+        "RUNDECK_API_TOKEN": "your-token-here"
+      }
     }
+  }
 }
 ```
 
-## Available Tools and Resources
+## 🔐 Getting a Rundeck API Token
 
-This section describes the tools provided by the Rundeck MCP server. They are categorized based on whether they only read data or can modify data in your Rundeck environment.
+1. **Log into Rundeck** - Navigate to your Rundeck server
+2. **Access Profile** - Click your username → "Profile"
+3. **API Tokens Section** - Find the "User API Tokens" section
+4. **Generate Token** - Click "Generate New Token"
+5. **Set Expiration** - Choose expiration (or never)
+6. **Copy & Save** - Store the token securely
 
-**Important**: By default, the MCP server only exposes read-only tools. To enable tools that can modify your Rundeck environment (write-mode tools), you must explicitly start the server with the `--enable-write-tools` flag. This helps prevent accidental changes to your Rundeck data.
+## 🛠️ Available Tools
 
-| Tool | Area | Description | Read-only |
-|------|------|-------------|-----------|
-| `list_servers` | Server Management | Lists all configured Rundeck servers | ✅ |
-| `get_projects` | Project Management | Lists all projects | ✅ |
-| `get_project_stats` | Project Management | Gets statistics for a specific project | ✅ |
-| `get_jobs` | Job Management | Lists jobs in a project with filtering | ✅ |
-| `get_job_definition` | Job Management | Gets complete job definition | ✅ |
-| `analyze_job` | Job Management | Analyzes job for risk assessment | ✅ |
-| `visualize_job` | Job Management | Generates visual workflow diagrams | ✅ |
-| `run_job` | Job Execution | Executes a job with parameters | ❌ |
-| `enable_job` | Job Control | Enables a job for execution | ❌ |
-| `disable_job` | Job Control | Disables a job from execution | ❌ |
-| `enable_job_schedule` | Job Control | Enables job scheduling | ❌ |
-| `disable_job_schedule` | Job Control | Disables job scheduling | ❌ |
-| `get_execution_status` | Execution Monitoring | Gets execution status and details | ✅ |
-| `get_execution_output` | Execution Monitoring | Gets execution output logs | ✅ |
-| `get_executions` | Execution Monitoring | Lists executions with filtering | ✅ |
-| `get_bulk_execution_status` | Execution Monitoring | Gets status for multiple executions | ✅ |
-| `abort_execution` | Execution Control | Aborts a running execution | ❌ |
-| `retry_execution` | Execution Control | Retries a failed execution | ❌ |
-| `delete_execution` | Execution Control | Deletes an execution record | ❌ |
-| `get_nodes` | Node Management | Lists nodes with filtering | ✅ |
-| `get_node_details` | Node Management | Gets detailed node information | ✅ |
-| `get_node_summary` | Node Management | Gets statistical node summary | ✅ |
-| `get_system_info` | System Management | Gets system information | ✅ |
-| `get_execution_mode` | System Management | Gets current execution mode | ✅ |
-| `set_execution_mode` | System Management | Sets execution mode (active/passive) | ❌ |
-| `health_check_servers` | System Management | Checks health of all servers | ✅ |
-| `get_execution_metrics` | Analytics | Gets execution metrics and trends | ✅ |
-| `calculate_job_roi` | Analytics | Calculates ROI for job automation | ✅ |
-| `get_all_executions` | Analytics | Gets all executions with details | ✅ |
+### Read Operations (Always Available)
+- `list_servers` - List configured Rundeck servers
+- `get_projects` - List all projects
+- `get_jobs` - List jobs in a project
+- `get_job_definition` - Get job details
+- `get_executions` - List job executions
+- `get_nodes` - List infrastructure nodes
+- `get_system_info` - System health check
 
-### Risk Assessment
+### Write Operations (Requires --enable-write-tools)
+- `run_job` - Execute a job
+- `run_job_with_monitoring` - Execute and monitor job
+- `create_job` - Create new job
+- `create_job_from_yaml` - Import job from YAML
+- `abort_execution` - Stop running execution
+- `enable_job` / `disable_job` - Control job state
 
-Tools include visual risk indicators:
-- 🔴 **High Risk**: Destructive operations (delete, abort, system control)
-- 🟡 **Medium Risk**: Execution and state changes (run, enable/disable)
-- 🟢 **Low Risk**: Read-only operations (get, list, analyze)
+## 📝 Usage Examples
 
-## Support
-
-Rundeck's MCP server is an open-source project, and as such, we offer only community-based support. If assistance is required, please open an issue in GitHub.
-
-## Contributing
-
-If you are interested in contributing to this project, please refer to our [Contributing Guidelines](CONTRIBUTING.md).
-
-## Development Commands
+### Basic Commands
 
 ```bash
-# Install development dependencies
-make dev-install
+# Check server status
+uv run rundeck-mcp check
 
-# Run tests
-make test
+# List available tools
+uv run rundeck-mcp serve --help
 
-# Format code
-make format
-
-# Run linting
-make lint
-
-# Type checking
-make type-check
-
-# Run all quality checks
-make check
-
-# Generate Claude Desktop configuration
-make configure-claude
-
-# Start development server
-make serve
-
-# Start server with write tools enabled
-make serve-write
+# Run with debug logging
+LOG_LEVEL=DEBUG uv run rundeck-mcp serve
 ```
 
-## Security
+### Multi-Server Setup
 
-- Store API tokens securely using environment variables
-- Never commit API tokens to version control
-- Use HTTPS connections to Rundeck servers
-- Limit API token permissions to required operations only
-- Enable write tools only when necessary
+Configure multiple Rundeck instances:
 
-## License
+```bash
+# Primary server
+export RUNDECK_URL="https://prod.rundeck.com"
+export RUNDECK_API_TOKEN="prod-token"
+export RUNDECK_NAME="production"
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+# Secondary server
+export RUNDECK_URL_1="https://dev.rundeck.com"
+export RUNDECK_API_TOKEN_1="dev-token"
+export RUNDECK_NAME_1="development"
+```
+
+## 🧪 Testing
+
+```bash
+# Run all tests
+uv run pytest
+
+# Run with coverage
+uv run pytest --cov
+
+# Test server connection
+uv run python tests/test_server.py
+
+# Debug job operations
+uv run python tests/debug_jobs.py
+```
+
+## 🔍 Troubleshooting
+
+### Common Issues
+
+**Connection Refused**
+```bash
+# Check URL and network
+curl -I $RUNDECK_URL/api/47/system/info
+
+# Verify token
+echo $RUNDECK_API_TOKEN
+```
+
+**Permission Denied**
+- Ensure API token has required permissions
+- Check if write tools are enabled for write operations
+
+**Module Not Found**
+```bash
+# Reinstall dependencies
+uv sync --refresh
+```
+
+### Debug Mode
+
+```bash
+# Enable debug logging
+LOG_LEVEL=DEBUG uv run rundeck-mcp serve
+
+# Test specific tool
+uv run python -c "from rundeck_mcp.tools.jobs import get_jobs; print(get_jobs('my-project'))"
+```
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting:
+   ```bash
+   make check  # Runs format, lint, type-check, and test
+   ```
+5. Submit a pull request
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) file for details.
+
+## 🔗 Links
+
+- [Rundeck Documentation](https://docs.rundeck.com)
+- [MCP Protocol Specification](https://modelcontextprotocol.io)
+- [uv Documentation](https://github.com/astral-sh/uv)
+
+## 💡 Support
+
+- **Issues**: [GitHub Issues](https://github.com/yourusername/rundeck-mcp-server/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/yourusername/rundeck-mcp-server/discussions)
+- **Security**: See [SECURITY.md](SECURITY.md) for reporting vulnerabilities
+
+---
+
+Built with ❤️ for the Rundeck community. Ready for production use!

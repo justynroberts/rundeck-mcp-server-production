@@ -20,8 +20,6 @@ def get_execution_metrics(project: str, days: int = 30, server: str | None = Non
     Returns:
         Execution metrics
     """
-    client = get_client(server)
-
     # Get executions for the specified period
     executions_response = get_executions(project, limit=1000, server=server)
     executions = executions_response.response
@@ -104,8 +102,6 @@ def calculate_job_roi(
     Returns:
         ROI analysis
     """
-    client = get_client(server)
-
     # Get job execution data to estimate automation time
     try:
         # Get recent executions for this job
@@ -134,10 +130,7 @@ def calculate_job_roi(
     annual_savings = monthly_savings * 12
 
     # Calculate ROI percentage
-    if monthly_manual_cost > 0:
-        roi_percentage = (monthly_savings / monthly_manual_cost) * 100
-    else:
-        roi_percentage = 0
+    roi_percentage = monthly_savings / monthly_manual_cost * 100 if monthly_manual_cost > 0 else 0
 
     return ROIAnalysis(
         job_id=job_id,

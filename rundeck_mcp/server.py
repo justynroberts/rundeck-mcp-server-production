@@ -114,7 +114,10 @@ class RundeckMCPServer:
                 content=[
                     TextContent(
                         type="text",
-                        text=f"Write tool '{tool_name}' is disabled. Use --enable-write-tools to enable write operations.",
+                        text=(
+                            f"Write tool '{tool_name}' is disabled. "
+                            "Use --enable-write-tools to enable write operations."
+                        ),
                     )
                 ],
                 isError=True,
@@ -131,7 +134,7 @@ class RundeckMCPServer:
             elif hasattr(result, "json"):
                 # Pydantic model (older version)
                 content = result.json(indent=2)
-            elif isinstance(result, (dict, list)):
+            elif isinstance(result, dict | list):
                 # Regular dict/list
                 import json
 

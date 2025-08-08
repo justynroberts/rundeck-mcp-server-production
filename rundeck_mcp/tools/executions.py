@@ -108,7 +108,6 @@ def get_bulk_execution_status(execution_ids: list[str], server: str | None = Non
     Returns:
         List of execution statuses
     """
-    client = get_client(server)
     statuses = []
 
     for exec_id in execution_ids:

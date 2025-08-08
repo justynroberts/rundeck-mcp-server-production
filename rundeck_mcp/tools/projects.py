@@ -1,6 +1,5 @@
 """Project management tools."""
 
-
 from ..client import get_client
 from ..models.base import ListResponseModel
 from ..models.rundeck import Project, ProjectStats
@@ -44,8 +43,8 @@ def get_project_stats(project: str, server: str | None = None) -> ProjectStats:
     """
     client = get_client(server)
 
-    # Get project info
-    project_info = client._make_request("GET", f"project/{project}")
+    # Get project info (for validation)
+    client._make_request("GET", f"project/{project}")
 
     # Get jobs count
     jobs_response = client._make_request("GET", f"project/{project}/jobs")

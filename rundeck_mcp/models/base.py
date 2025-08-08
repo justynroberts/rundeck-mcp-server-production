@@ -1,11 +1,9 @@
 """Base models for Rundeck MCP Server."""
 
-from typing import Any, Generic, TypeVar
+from typing import Any
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import Field, computed_field
-
-T = TypeVar("T")
 
 
 class BaseModel(PydanticBaseModel):
@@ -18,7 +16,7 @@ class BaseModel(PydanticBaseModel):
     }
 
 
-class ListResponseModel(BaseModel, Generic[T]):
+class ListResponseModel[T](BaseModel):
     """Generic response model for list operations."""
 
     response: list[T] = Field(description="List of items")
@@ -39,7 +37,7 @@ class ListResponseModel(BaseModel, Generic[T]):
         return f"Retrieved {self.count} items"
 
 
-class PaginatedResponse(BaseModel, Generic[T]):
+class PaginatedResponse[T](BaseModel):
     """Response model for paginated operations."""
 
     items: list[T] = Field(description="List of items in current page")
