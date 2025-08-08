@@ -189,22 +189,68 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ## 🛠️ Available Tools
 
-### Read Operations (Always Available)
-- `list_servers` - List configured Rundeck servers
-- `get_projects` - List all projects
-- `get_jobs` - List jobs in a project
-- `get_job_definition` - Get job details
-- `get_executions` - List job executions
-- `get_nodes` - List infrastructure nodes
-- `get_system_info` - System health check
+### Complete Tool Reference
 
-### Write Operations (Requires --enable-write-tools)
-- `run_job` - Execute a job
-- `run_job_with_monitoring` - Execute and monitor job
-- `create_job` - Create new job
-- `create_job_from_yaml` - Import job from YAML
-- `abort_execution` - Stop running execution
-- `enable_job` / `disable_job` - Control job state
+The server provides **33 tools** organized by category and access level:
+
+| Tool Name | Type | Category | Description |
+|-----------|------|----------|-------------|
+| **SYSTEM TOOLS** ||||
+| `list_servers` | 🔍 Read | System | List all configured Rundeck servers |
+| `health_check_servers` | 🔍 Read | System | Check health status of all servers |
+| `get_system_info` | 🔍 Read | System | Get Rundeck system information and version |
+| `get_execution_mode` | 🔍 Read | System | Get current execution mode (active/passive) |
+| `set_execution_mode` | ✏️ Write | System | Set execution mode for maintenance |
+| **PROJECT TOOLS** ||||
+| `get_projects` | 🔍 Read | Projects | List all projects in Rundeck |
+| `get_project_stats` | 🔍 Read | Projects | Get project statistics and metrics |
+| **JOB TOOLS** ||||
+| `get_jobs` | 🔍 Read | Jobs | List jobs in a project with filtering |
+| `get_job_definition` | 🔍 Read | Jobs | Get complete job definition and configuration |
+| `analyze_job` | 🔍 Read | Jobs | Analyze job for risk and recommendations |
+| `visualize_job` | 🔍 Read | Jobs | Generate job workflow visualization |
+| `run_job` | ✏️ Write | Jobs | Execute a job with parameters |
+| `run_job_with_monitoring` | ✏️ Write | Jobs | Execute job and monitor until completion |
+| `create_job` | ✏️ Write | Jobs | Create new job programmatically |
+| `create_job_from_yaml` | ✏️ Write | Jobs | Import job from YAML definition |
+| `create_multiple_jobs_from_yaml` | ✏️ Write | Jobs | Bulk import multiple jobs from YAML |
+| `enable_job` | ✏️ Write | Jobs | Enable a disabled job |
+| `disable_job` | ✏️ Write | Jobs | Disable an enabled job |
+| `enable_job_schedule` | ✏️ Write | Jobs | Enable job scheduling |
+| `disable_job_schedule` | ✏️ Write | Jobs | Disable job scheduling |
+| **EXECUTION TOOLS** ||||
+| `get_executions` | 🔍 Read | Executions | List executions with filtering |
+| `get_execution_status` | 🔍 Read | Executions | Get execution status and details |
+| `get_execution_output` | 🔍 Read | Executions | Get execution output logs |
+| `get_bulk_execution_status` | 🔍 Read | Executions | Get status for multiple executions |
+| `abort_execution` | ✏️ Write | Executions | Abort a running execution |
+| `retry_execution` | ✏️ Write | Executions | Retry a failed execution |
+| `delete_execution` | ✏️ Write | Executions | Delete execution history |
+| **NODE TOOLS** ||||
+| `get_nodes` | 🔍 Read | Nodes | List nodes with filtering |
+| `get_node_details` | 🔍 Read | Nodes | Get detailed node information |
+| `get_node_summary` | 🔍 Read | Nodes | Get node statistics summary |
+| **ANALYTICS TOOLS** ||||
+| `get_execution_metrics` | 🔍 Read | Analytics | Get execution metrics and trends |
+| `calculate_job_roi` | 🔍 Read | Analytics | Calculate ROI for job automation |
+| `get_all_executions` | 🔍 Read | Analytics | Get all executions with pagination |
+
+### Tool Categories Summary
+
+| Category | Read Tools | Write Tools | Total |
+|----------|------------|-------------|-------|
+| System | 4 | 1 | 5 |
+| Projects | 2 | 0 | 2 |
+| Jobs | 4 | 9 | 13 |
+| Executions | 4 | 3 | 7 |
+| Nodes | 3 | 0 | 3 |
+| Analytics | 3 | 0 | 3 |
+| **Total** | **20** | **13** | **33** |
+
+### Access Control
+
+- **🔍 Read Tools (20)**: Always available, safe for production use
+- **✏️ Write Tools (13)**: Require `--enable-write-tools` flag, can modify Rundeck state
 
 ## 📝 Usage Examples
 
