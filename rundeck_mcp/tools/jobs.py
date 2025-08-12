@@ -1,5 +1,6 @@
 """Job management tools."""
 
+import re
 from typing import Any
 
 import yaml
@@ -446,6 +447,203 @@ def disable_job_schedule(job_id: str, server: str | None = None) -> dict[str, An
     return client._make_request("POST", f"job/{job_id}/schedule/disable")
 
 
+def _extract_variables_from_command(command: str) -> list[str]:
+    """Extract variable names from shell commands.
+
+    Looks for patterns like $VAR, ${VAR}, or VAR= at the start of lines.
+    """
+    variables = set()
+
+    # Pattern 1: $VAR or ${VAR} usage
+    var_usage_pattern = r"\$\{?([A-Z_][A-Z0-9_]*)\}?"
+    variables.update(re.findall(var_usage_pattern, command, re.IGNORECASE))
+
+    # Pattern 2: VAR=value assignments (extract VAR)
+    var_assignment_pattern = r"^([A-Z_][A-Z0-9_]*)\s*="
+    for line in command.split("\n"):
+        line = line.strip()
+        match = re.match(var_assignment_pattern, line, re.IGNORECASE)
+        if match:
+            variables.add(match.group(1).upper())
+
+    return sorted(list(variables))
+
+
+def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
+    """Break a command into logical script steps."""
+    lines = [line.strip() for line in command.split("\n") if line.strip()]
+
+    if len(lines) <= 1:
+        # Single line command - return as single step
+        return [{"exec": command, "description": f"Execute {name}"}]
+
+    steps = []
+    current_step_lines = []
+    step_counter = 1
+
+    for line in lines:
+        # Check if this line starts a new logical step
+        if (
+            line.startswith("#")
+            or line.startswith('echo "=')
+            or line.startswith('echo "===')
+            or any(
+                keyword in line.lower()
+                for keyword in [
+                    "install",
+                    "download",
+                    "setup",
+                    "configure",
+                    "start",
+                    "stop",
+                    "restart",
+                    "deploy",
+                    "backup",
+                    "cleanup",
+                ]
+            )
+        ):
+            # Save previous step if exists
+            if current_step_lines:
+                step_command = "\n".join(current_step_lines)
+                steps.append(
+                    {
+                        "exec": step_command,
+                        "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
+                    }
+                )
+                step_counter += 1
+                current_step_lines = []
+
+        current_step_lines.append(line)
+
+    # Add final step
+    if current_step_lines:
+        step_command = "\n".join(current_step_lines)
+        steps.append(
+            {
+                "exec": step_command,
+                "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
+            }
+        )
+
+    return steps
+
+
+def _infer_step_description(line: str) -> str:
+    """Infer a human-readable description from a command line."""
+    line = line.strip()
+
+    # Remove comment markers
+    if line.startswith("#"):
+        return line[1:].strip()
+
+    # Common command patterns
+    if line.startswith("apt-get install") or line.startswith("yum install"):
+        return "Install packages"
+    elif line.startswith("wget") or line.startswith("curl"):
+        return "Download files"
+    elif line.startswith("tar") or line.startswith("unzip"):
+        return "Extract archive"
+    elif line.startswith("systemctl start") or line.startswith("service") and "start" in line:
+        return "Start service"
+    elif line.startswith("systemctl stop") or line.startswith("service") and "stop" in line:
+        return "Stop service"
+    elif line.startswith("cp") or line.startswith("mv"):
+        return "Move/copy files"
+    elif line.startswith("mkdir"):
+        return "Create directories"
+    elif line.startswith("chmod") or line.startswith("chown"):
+        return "Set permissions"
+    elif "deploy" in line.lower():
+        return "Deploy application"
+    elif "backup" in line.lower():
+        return "Backup data"
+    elif "clean" in line.lower():
+        return "Cleanup"
+    else:
+        return "Execute command"
+
+
+def _create_job_options_from_variables(variables: list[str]) -> dict[str, Any]:
+    """Create Rundeck job options from extracted variables."""
+    options = {}
+
+    for var in variables:
+        # Infer option properties based on variable name
+        option_config = {"required": True, "description": f"Value for {var}"}
+
+        # Add specific configurations for common variable patterns
+        var_lower = var.lower()
+        if "password" in var_lower or "secret" in var_lower or "token" in var_lower:
+            option_config["secure"] = True
+            option_config["description"] = f"Secure value for {var}"
+        elif "port" in var_lower:
+            option_config["description"] = f"Port number for {var}"
+            option_config["defaultValue"] = "8080"
+        elif "host" in var_lower or "server" in var_lower:
+            option_config["description"] = f"Hostname or IP for {var}"
+        elif "path" in var_lower or "dir" in var_lower:
+            option_config["description"] = f"File path for {var}"
+        elif "env" in var_lower or "environment" in var_lower:
+            option_config["values"] = ["dev", "staging", "production"]
+            option_config["description"] = f"Environment for {var}"
+        elif "version" in var_lower:
+            option_config["description"] = f"Version number for {var}"
+            option_config["defaultValue"] = "latest"
+
+        options[var] = option_config
+
+    return options
+
+
+def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
+    """Replace variable references with Rundeck option syntax."""
+    modified_command = command
+
+    for var in variables:
+        # Replace $VAR and ${VAR} with @@option.VAR@@
+        modified_command = re.sub(rf"\${{{var}}}", f"@@option.{var}@@", modified_command, flags=re.IGNORECASE)
+        modified_command = re.sub(
+            rf"\${var}(?![A-Za-z0-9_])", f"@@option.{var}@@", modified_command, flags=re.IGNORECASE
+        )
+
+    return modified_command
+
+
+def _generate_markdown_documentation(name: str, description: str, variables: list[str], steps: list[dict]) -> str:
+    """Generate markdown documentation for the job."""
+    doc = f"# {name}\n\n"
+
+    if description:
+        doc += f"{description}\n\n"
+
+    if variables:
+        doc += "## Variables\n\n"
+        doc += "This job uses the following variables (configured as job options):\n\n"
+        for var in variables:
+            doc += f"- `{var}`: Variable for job execution\n"
+        doc += "\n"
+
+    if len(steps) > 1:
+        doc += "## Execution Steps\n\n"
+        for i, step in enumerate(steps, 1):
+            doc += f"{i}. **{step['description']}**\n"
+            doc += "   ```bash\n"
+            doc += f"   {step['exec']}\n"
+            doc += "   ```\n\n"
+    else:
+        doc += "## Execution\n\n"
+        doc += f"```bash\n{steps[0]['exec']}\n```\n\n"
+
+    doc += "## Notes\n\n"
+    doc += "- Job runs locally if no target nodes specified\n"
+    doc += "- Variables are automatically extracted and created as job options\n"
+    doc += "- Variable substitution uses @@option.VARIABLENAME@@ format\n"
+
+    return doc
+
+
 def create_job(
     project: str,
     name: str,
@@ -462,6 +660,7 @@ def create_job(
     multiple_executions: bool = False,
     log_level: str = "INFO",
     dupe_option: str = "create",
+    enhance_job: bool = True,
     server: str | None = None,
 ) -> dict[str, Any]:
     """Create a new Rundeck job.
@@ -482,10 +681,18 @@ def create_job(
         multiple_executions: Allow concurrent executions
         log_level: Logging level (DEBUG, VERBOSE, INFO, WARN, ERROR)
         dupe_option: Behavior for duplicate jobs (create, update, skip)
+        enhance_job: Enable job enhancement features (default: True)
         server: Server name/alias to use (e.g., "demo"), not the project name
 
     Returns:
         Job creation response
+
+    Enhancement Features (when enhance_job=True):
+        - Breaks commands into logical script steps
+        - Generates markdown documentation
+        - Extracts variables and creates job options automatically
+        - Substitutes variables with @@option.VARIABLENAME@@ format
+        - Sets job to run locally if no target nodes specified
 
     Example:
         create_job(
@@ -500,16 +707,48 @@ def create_job(
     """
     client = get_client(server)
 
+    # Enhanced job processing
+    if enhance_job:
+        # Extract variables from command
+        variables = _extract_variables_from_command(command)
+
+        # Break command into logical steps
+        steps = _break_command_into_steps(command, name)
+
+        # Generate markdown documentation
+        markdown_doc = _generate_markdown_documentation(name, description, variables, steps)
+        enhanced_description = f"{description}\n\n{markdown_doc}" if description else markdown_doc
+
+        # Create job options from variables
+        if variables:
+            extracted_options = _create_job_options_from_variables(variables)
+            # Merge with user-provided options
+            if options:
+                extracted_options.update(options)
+            options = extracted_options
+
+            # Substitute variables in steps
+            for step in steps:
+                step["exec"] = _substitute_variables_in_command(step["exec"], variables)
+
+        # Set to run locally if no node filter specified
+        if not node_filter:
+            node_filter = {"dispatch": {"threadcount": "1"}, "filter": "name: localhost"}
+    else:
+        # Simple single-step job
+        steps = [{"exec": command, "description": f"Execute {name}"}]
+        enhanced_description = description
+
     # Build the job definition in YAML format
     job_def = {
         "name": name,
-        "description": description,
+        "description": enhanced_description,
         "group": group,
         "loglevel": log_level,
         "multipleExecutions": multiple_executions,
         "executionEnabled": execution_enabled,
         "scheduleEnabled": schedule_enabled,
-        "sequence": {"keepgoing": False, "strategy": "node-first", "commands": [{"exec": command}]},
+        "sequence": {"keepgoing": False, "strategy": "node-first", "commands": steps},
     }
 
     # Add optional fields

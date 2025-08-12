@@ -20,8 +20,8 @@
     "prompt": "Execute a job immediately with optional parameters and node filters. Returns execution ID for monitoring. Use get_job_definition first to understand required options."
   },
   "create_job": {
-    "description": "Create a new Rundeck job in a project",
-    "prompt": "Create a new job with specified command, options, and configuration. Requires project name, job name, and command. Supports optional scheduling, node filtering, timeouts, and job options. Use this to automate job creation. Always confirm job details before creation and show a summary of what will be created."
+    "description": "Create a new Rundeck job in a project with enhanced features",
+    "prompt": "Create a new job with enhanced automation features. AUTOMATICALLY breaks jobs into script steps, documents in markdown, extracts variables as job options, and uses @@option.VARIABLENAME@@ substitution. Variables found at the top of scripts become job options. If no target machines specified, runs locally. Always confirm job details and show summary including extracted variables, generated steps, and markdown documentation before creation."
   },
   "create_job_from_yaml": {
     "description": "Create job(s) from YAML definition",
