@@ -602,10 +602,10 @@ def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
     modified_command = command
 
     for var in variables:
-        # Replace $VAR and ${VAR} with @@option.VAR@@
-        modified_command = re.sub(rf"\${{{var}}}", f"@@option.{var}@@", modified_command, flags=re.IGNORECASE)
+        # Replace $VAR and ${VAR} with @option.VAR@
+        modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
         modified_command = re.sub(
-            rf"\${var}(?![A-Za-z0-9_])", f"@@option.{var}@@", modified_command, flags=re.IGNORECASE
+            rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE
         )
 
     return modified_command
@@ -639,7 +639,7 @@ def _generate_markdown_documentation(name: str, description: str, variables: lis
     doc += "## Notes\n\n"
     doc += "- Job runs locally if no target nodes specified\n"
     doc += "- Variables are automatically extracted and created as job options\n"
-    doc += "- Variable substitution uses @@option.VARIABLENAME@@ format\n"
+    doc += "- Variable substitution uses @option.VARIABLENAME@ format\n"
 
     return doc
 
@@ -691,7 +691,7 @@ def create_job(
         - Breaks commands into logical script steps
         - Generates markdown documentation
         - Extracts variables and creates job options automatically
-        - Substitutes variables with @@option.VARIABLENAME@@ format
+        - Substitutes variables with @option.VARIABLENAME@ format
         - Sets job to run locally if no target nodes specified
 
     Example:
