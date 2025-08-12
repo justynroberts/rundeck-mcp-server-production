@@ -1,5 +1,6 @@
 """Job management tools."""
 
+import json
 import re
 from typing import Any
 
@@ -604,9 +605,7 @@ def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
     for var in variables:
         # Replace $VAR and ${VAR} with @option.VAR@
         modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
-        modified_command = re.sub(
-            rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE
-        )
+        modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
 
     return modified_command
 
@@ -903,6 +902,124 @@ def create_multiple_jobs_from_yaml(
     )
 
 
+def create_job_from_json(
+    project: str,
+    json_content: str,
+    dupe_option: str = "create",
+    uuid_option: str = "remove",
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Create job(s) from JSON definition.
+
+    Args:
+        project: Project name where jobs will be created
+        json_content: JSON string containing job definition(s)
+        dupe_option: Behavior for duplicate jobs (create, update, skip)
+        uuid_option: UUID handling (preserve, remove)
+        server: Server name/alias to use (e.g., "demo"), not the project name
+
+    Returns:
+        Job import response
+
+    Example:
+        json_content = '''
+        [{
+          "name": "Hello World Job",
+          "description": "A simple greeting job",
+          "loglevel": "INFO",
+          "sequence": {
+            "keepgoing": false,
+            "strategy": "node-first",
+            "commands": [
+              {"exec": "echo 'Hello, World!'"}
+            ]
+          }
+        }]
+        '''
+
+        create_job_from_json(
+            project="my-project",
+            json_content=json_content,
+            server="demo"
+        )
+    """
+    client = get_client(server)
+
+    # Parse JSON and validate structure
+    try:
+        parsed_jobs = json.loads(json_content)
+        if not isinstance(parsed_jobs, list):
+            raise ValueError("JSON must contain a list of job definitions")
+
+        # Convert JSON to YAML for Rundeck import
+        # Fix common JSON format issues
+        for job in parsed_jobs:
+            # Fix options format - convert array to dict if needed
+            if "options" in job and isinstance(job["options"], list):
+                options_dict = {}
+                for opt in job["options"]:
+                    if isinstance(opt, dict) and "name" in opt:
+                        opt_name = opt.pop("name")
+                        # Convert JSON format to YAML format
+                        yaml_option = {}
+                        if "description" in opt:
+                            yaml_option["description"] = opt["description"]
+                        if "required" in opt:
+                            yaml_option["required"] = opt["required"]
+                        if "value" in opt:
+                            yaml_option["defaultValue"] = opt["value"]
+                        if "values" in opt:
+                            yaml_option["values"] = opt["values"]
+                        if "enforced" in opt:
+                            yaml_option["enforced"] = opt["enforced"]
+                        if "regex" in opt:
+                            yaml_option["regex"] = opt["regex"]
+                        if "regexError" in opt:
+                            yaml_option["regexError"] = opt["regexError"]
+                        options_dict[opt_name] = yaml_option
+                job["options"] = options_dict
+
+            # Fix sequence format - ensure it's the right structure
+            if "sequence" in job:
+                if isinstance(job["sequence"], list):
+                    # Convert list of steps to proper sequence format
+                    steps = job["sequence"]
+                    job["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": []}
+                    for step in steps:
+                        if "script" in step:
+                            # Convert script to exec command
+                            command = {"exec": step["script"]}
+                            if "description" in step:
+                                command["description"] = step["description"]
+                            job["sequence"]["commands"].append(command)
+                        elif "exec" in step or "script" in step:
+                            job["sequence"]["commands"].append(step)
+
+            # Fix variable substitution format
+            job_str = json.dumps(job)
+            # Replace @@option.VAR@@ with @option.VAR@
+            job_str = re.sub(r"@@option\.([^@]+)@@", r"@option.\1@", job_str)
+            job.update(json.loads(job_str))
+
+        # Convert to YAML
+        job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
+
+    except json.JSONDecodeError as e:
+        raise ValueError(f"Invalid JSON format: {e}") from e
+    except Exception as e:
+        raise ValueError(f"JSON processing failed: {e}") from e
+
+    # Import the jobs via the API using YAML format
+    headers = {"Content-Type": "application/yaml"}
+    params = {"fileformat": "yaml", "dupeOption": dupe_option, "uuidOption": uuid_option}
+
+    response = client._make_request(
+        "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
+    )
+
+    return response
+
+
 # Tool definitions
 job_tools = {
     "read": [
@@ -916,6 +1033,7 @@ job_tools = {
         run_job_with_monitoring,
         create_job,
         create_job_from_yaml,
+        create_job_from_json,
         create_multiple_jobs_from_yaml,
         enable_job,
         disable_job,
