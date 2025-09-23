@@ -448,6 +448,70 @@ def disable_job_schedule(job_id: str, server: str | None = None) -> dict[str, An
     return client._make_request("POST", f"job/{job_id}/schedule/disable")
 
 
+def delete_job(job_id: str, confirmed: bool = False, server: str | None = None) -> dict[str, Any]:
+    """Delete a job permanently.
+
+    🔴 HIGH RISK: This operation permanently deletes the job and cannot be undone.
+
+    IMPORTANT: This is a DESTRUCTIVE operation that requires explicit user confirmation.
+    The job will be permanently removed from Rundeck, including all its configuration,
+    history, and scheduled runs. This action cannot be reversed.
+
+    Args:
+        job_id: Job ID to delete
+        confirmed: Must be True to confirm deletion (required safety check)
+        server: Server name to query (optional)
+
+    Returns:
+        Response data confirming deletion
+
+    Raises:
+        ValueError: If confirmed is not True
+    """
+    if not confirmed:
+        # Get job details for user confirmation
+        try:
+            job_def = get_job_definition(job_id, server)
+            job_info = f"Job '{job_def.name}' (ID: {job_id}) in project '{job_def.project}'"
+            if job_def.description:
+                job_info += f"\nDescription: {job_def.description}"
+        except Exception:
+            job_info = f"Job ID: {job_id}"
+
+        raise ValueError(
+            f"🚨 DELETION CONFIRMATION REQUIRED 🚨\n\n"
+            f"You are about to PERMANENTLY DELETE:\n{job_info}\n\n"
+            f"⚠️  This action CANNOT be undone!\n"
+            f"⚠️  All job configuration, history, and schedules will be lost!\n\n"
+            f"To proceed with deletion, you must call this function again with confirmed=True:\n"
+            f"delete_job(job_id='{job_id}', confirmed=True{', server=\"' + server + '\"' if server else ''})"
+        )
+
+    client = get_client(server)
+
+    # Get job details before deletion for confirmation message
+    try:
+        job_def = get_job_definition(job_id, server)
+        job_name = job_def.name
+        project = job_def.project
+    except Exception:
+        job_name = "Unknown"
+        project = "Unknown"
+
+    # Perform the deletion
+    response = client._make_request("DELETE", f"job/{job_id}")
+
+    return {
+        "success": True,
+        "message": f"✅ Job '{job_name}' (ID: {job_id}) has been permanently deleted from project '{project}'",
+        "job_id": job_id,
+        "job_name": job_name,
+        "project": project,
+        "deleted_at": response.get("timestamp", "Unknown"),
+        "warning": "This action cannot be undone. The job and all its data have been permanently removed."
+    }
+
+
 def _extract_variables_from_command(command: str) -> list[str]:
     """Extract variable names from shell commands.
 
@@ -1039,5 +1103,6 @@ job_tools = {
         disable_job,
         enable_job_schedule,
         disable_job_schedule,
+        delete_job,
     ],
 }

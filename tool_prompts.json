@@ -115,6 +115,10 @@
     "description": "Disable job scheduling (prevents scheduled execution but allows manual execution)",
     "prompt": "Disable automatic scheduled execution while preserving manual execution capability. Show amber square emoji and Impact assessment: LOW-MEDIUM RISK - AUTOMATION IMPACT. Ideal for maintenance windows, schedule coordination, or when manual control is needed. Scheduled runs stop but manual triggers still work."
   },
+  "delete_job": {
+    "description": "🔴 PERMANENTLY DELETE a job (DESTRUCTIVE - requires confirmation)",
+    "prompt": "🚨 CRITICAL SAFETY PROTOCOL 🚨 ALWAYS show red square emoji and Impact assessment: HIGH RISK - PERMANENT DATA LOSS at the beginning. This tool PERMANENTLY and IRREVERSIBLY deletes a job from Rundeck. The operation cannot be undone and will destroy all job configuration, execution history, and schedules. MANDATORY two-step process: 1) First call WITHOUT confirmed=True to show deletion preview and get explicit user consent, 2) Second call WITH confirmed=True to execute deletion. Always display detailed job information and require explicit user confirmation before proceeding. Use extreme caution - this is a destructive operation."
+  },
   "get_execution_mode": {
     "description": "Get current system execution mode",
     "prompt": "Check the global execution mode of the Rundeck system. Shows whether the system is in ACTIVE mode (normal operations) or PASSIVE mode (executions disabled). Essential for understanding system state during maintenance or troubleshooting."

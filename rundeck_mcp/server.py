@@ -9,11 +9,9 @@ from mcp.types import (
     CallToolRequest,
     CallToolResult,
     ListToolsRequest,
-    ServerCapabilities,
     TextContent,
     Tool,
     ToolAnnotations,
-    ToolsCapability,
 )
 
 from .client import get_client_manager
@@ -35,9 +33,6 @@ class RundeckMCPServer:
         self.enable_write_tools = enable_write_tools
         self.tool_prompts = load_tool_prompts()
         self.server = Server("rundeck-mcp-server")
-
-        # Configure server capabilities
-        self.server.update_capabilities(ServerCapabilities(tools=ToolsCapability()))
 
         # Register handlers
         self.server.list_tools = self._list_tools

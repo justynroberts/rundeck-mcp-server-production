@@ -191,7 +191,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### Complete Tool Reference
 
-The server provides **33 tools** organized by category and access level:
+The server provides **34 tools** organized by category and access level:
 
 | Tool Name | Type | Category | Description |
 |-----------|------|----------|-------------|
@@ -218,6 +218,7 @@ The server provides **33 tools** organized by category and access level:
 | `disable_job` | ✏️ Write | Jobs | Disable an enabled job |
 | `enable_job_schedule` | ✏️ Write | Jobs | Enable job scheduling |
 | `disable_job_schedule` | ✏️ Write | Jobs | Disable job scheduling |
+| `delete_job` | ✏️ Write | Jobs | 🔴 **PERMANENTLY DELETE** a job (requires confirmation) |
 | **EXECUTION TOOLS** ||||
 | `get_executions` | 🔍 Read | Executions | List executions with filtering |
 | `get_execution_status` | 🔍 Read | Executions | Get execution status and details |
@@ -241,16 +242,24 @@ The server provides **33 tools** organized by category and access level:
 |----------|------------|-------------|-------|
 | System | 4 | 1 | 5 |
 | Projects | 2 | 0 | 2 |
-| Jobs | 4 | 9 | 13 |
+| Jobs | 4 | 10 | 14 |
 | Executions | 4 | 3 | 7 |
 | Nodes | 3 | 0 | 3 |
 | Analytics | 3 | 0 | 3 |
-| **Total** | **20** | **13** | **33** |
+| **Total** | **20** | **14** | **34** |
 
 ### Access Control
 
 - **🔍 Read Tools (20)**: Always available, safe for production use
-- **✏️ Write Tools (13)**: Require `--enable-write-tools` flag, can modify Rundeck state
+- **✏️ Write Tools (14)**: Require `--enable-write-tools` flag, can modify Rundeck state
+
+### 🚨 **DESTRUCTIVE OPERATIONS**
+
+The `delete_job` tool is marked as **HIGH RISK** and implements mandatory safety protocols:
+- **Two-step confirmation process**: First call shows deletion preview, second call with `confirmed=True` executes
+- **Detailed job information display** before deletion
+- **Irreversible warning messages** with clear impact assessment
+- **Production safety**: Prevents accidental deletion through explicit confirmation requirement
 
 ## 📝 Usage Examples
 
