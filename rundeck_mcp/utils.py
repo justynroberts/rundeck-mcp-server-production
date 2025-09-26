@@ -1,10 +1,11 @@
 """Utility functions for Rundeck MCP Server."""
 
+import inspect
 import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, get_origin, get_args
 
 logger = logging.getLogger(__name__)
 
@@ -190,3 +191,102 @@ def setup_logging(level: str = "INFO"):
     # Set specific loggers
     logging.getLogger("requests").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
+
+
+def generate_input_schema(func: Any) -> dict[str, Any]:
+    """Generate JSON schema for function parameters.
+
+    Args:
+        func: Function to analyze
+
+    Returns:
+        JSON schema dictionary for the function parameters
+    """
+    signature = inspect.signature(func)
+    properties = {}
+    required = []
+
+    for param_name, param in signature.parameters.items():
+        # Skip *args and **kwargs
+        if param.kind in (param.VAR_POSITIONAL, param.VAR_KEYWORD):
+            continue
+
+        # Get type annotation
+        param_type = param.annotation
+
+        # Determine JSON schema type
+        json_type = "string"  # Default
+        json_format = None
+
+        if param_type is str or param_type == "str":
+            json_type = "string"
+        elif param_type is int or param_type == "int":
+            json_type = "integer"
+        elif param_type is float or param_type == "float":
+            json_type = "number"
+        elif param_type is bool or param_type == "bool":
+            json_type = "boolean"
+        elif param_type is list or (hasattr(param_type, "__origin__") and param_type.__origin__ is list):
+            json_type = "array"
+        elif param_type is dict or (hasattr(param_type, "__origin__") and param_type.__origin__ is dict):
+            json_type = "object"
+        elif hasattr(param_type, "__origin__"):
+            # Handle Union types (like str | None)
+            origin = get_origin(param_type)
+            args = get_args(param_type)
+
+            if origin is type(None) and len(args) >= 2:  # Union[X, None] or X | None
+                # Find the non-None type
+                non_none_types = [arg for arg in args if arg is not type(None)]
+                if non_none_types:
+                    first_type = non_none_types[0]
+                    if first_type is str:
+                        json_type = "string"
+                    elif first_type is int:
+                        json_type = "integer"
+                    elif first_type is float:
+                        json_type = "number"
+                    elif first_type is bool:
+                        json_type = "boolean"
+
+        # Create property schema
+        prop_schema = {"type": json_type}
+        if json_format:
+            prop_schema["format"] = json_format
+
+        # Add description based on parameter name
+        descriptions = {
+            "project": "Project name",
+            "server": "Server name to query (optional)",
+            "job_id": "Job ID",
+            "execution_id": "Execution ID",
+            "node_name": "Node name",
+            "group": "Job group filter (optional)",
+            "filter_query": "Node filter query (optional)",
+            "tags": "Tags filter (optional)",
+            "limit": "Maximum number of results",
+            "status": "Status filter (optional)",
+            "search_term": "Search term (optional)",
+            "command": "Command to execute",
+            "node_filter": "Node filter pattern (required for adhoc commands)",
+            "options": "Job options (optional)",
+            "content": "Content to import",
+            "format": "Import format (yaml or json)",
+            "operation": "Operation to perform",
+            "confirmed": "Confirmation flag for destructive operations"
+        }
+
+        if param_name in descriptions:
+            prop_schema["description"] = descriptions[param_name]
+
+        properties[param_name] = prop_schema
+
+        # Determine if parameter is required (no default value)
+        if param.default == param.empty:
+            required.append(param_name)
+
+    return {
+        "type": "object",
+        "properties": properties,
+        "required": required
+    }

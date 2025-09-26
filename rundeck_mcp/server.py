@@ -16,7 +16,7 @@ from mcp.types import (
 
 from .client import get_client_manager
 from .tools import all_tools, read_tools, write_tools
-from .utils import get_tool_description, load_tool_prompts
+from .utils import generate_input_schema, get_tool_description, load_tool_prompts
 
 logger = logging.getLogger(__name__)
 
@@ -48,16 +48,13 @@ class RundeckMCPServer:
         for tool_func in read_tools:
             tool_name = tool_func.__name__
             description = get_tool_description(tool_name, self.tool_prompts)
+            input_schema = generate_input_schema(tool_func)
 
             tools.append(
                 Tool(
                     name=tool_name,
                     description=description,
-                    inputSchema={
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    },
+                    inputSchema=input_schema,
                     annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True),
                 )
             )
@@ -67,6 +64,7 @@ class RundeckMCPServer:
             for tool_func in write_tools:
                 tool_name = tool_func.__name__
                 description = get_tool_description(tool_name, self.tool_prompts)
+                input_schema = generate_input_schema(tool_func)
 
                 # Determine if tool is destructive
                 destructive_tools = [
@@ -82,11 +80,7 @@ class RundeckMCPServer:
                     Tool(
                         name=tool_name,
                         description=description,
-                        inputSchema={
-                            "type": "object",
-                            "properties": {},
-                            "required": []
-                        },
+                        inputSchema=input_schema,
                         annotations=ToolAnnotations(
                             readOnlyHint=False, destructiveHint=is_destructive, idempotentHint=not is_destructive
                         ),
