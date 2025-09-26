@@ -1,7 +1,9 @@
 """Job management tools."""
 
 import json
+import random
 import re
+import string
 from typing import Any
 
 import yaml
@@ -9,6 +11,16 @@ import yaml
 from ..client import get_client
 from ..models.base import ListResponseModel
 from ..models.rundeck import Job, JobAnalysis, JobDefinition, JobVisualization
+
+
+def _generate_job_uuid() -> str:
+    """Generate a 16-digit alphanumeric random UUID for job creation.
+
+    Returns:
+        16-character string containing random letters and numbers
+    """
+    characters = string.ascii_letters + string.digits
+    return ''.join(random.choice(characters) for _ in range(16))
 
 
 def get_jobs(project: str, group: str | None = None, server: str | None = None) -> ListResponseModel[Job]:
@@ -815,6 +827,7 @@ def create_job(
 
     # Build the job definition in YAML format
     job_def = {
+        "uuid": _generate_job_uuid(),
         "name": name,
         "description": enhanced_description,
         "group": group,
@@ -905,7 +918,7 @@ def create_job_from_yaml(
         if not isinstance(parsed_jobs, list):
             raise ValueError("YAML must contain a list of job definitions")
 
-        # Basic validation
+        # Basic validation and UUID generation
         for i, job in enumerate(parsed_jobs):
             if not isinstance(job, dict):
                 raise ValueError(f"Job {i + 1} must be a dictionary")
@@ -913,6 +926,12 @@ def create_job_from_yaml(
                 raise ValueError(f"Job {i + 1} missing required 'name' field")
             if "sequence" not in job:
                 raise ValueError(f"Job {i + 1} missing required 'sequence' field")
+
+            # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
+            job["uuid"] = _generate_job_uuid()
+
+        # Convert back to YAML with UUIDs
+        job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
 
     except yaml.YAMLError as e:
         raise ValueError(f"Invalid YAML format: {e}") from e
@@ -1029,6 +1048,8 @@ def create_job_from_json(
         # Convert JSON to YAML for Rundeck import
         # Fix common JSON format issues and enhance jobs
         for job in parsed_jobs:
+            # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
+            job["uuid"] = _generate_job_uuid()
             # Extract all script/command content for variable extraction
             all_scripts = []
 
