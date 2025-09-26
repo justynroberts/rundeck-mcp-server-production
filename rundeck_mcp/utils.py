@@ -127,22 +127,8 @@ def validate_environment() -> dict[str, Any]:
     primary_url = os.getenv("RUNDECK_URL")
     primary_token = os.getenv("RUNDECK_API_TOKEN")
 
-    if not primary_url:
-        validation_results["errors"].append("RUNDECK_URL environment variable is not set")
-        validation_results["valid"] = False
-
-    if not primary_token:
-        validation_results["errors"].append("RUNDECK_API_TOKEN environment variable is not set")
-        validation_results["valid"] = False
-
-    if primary_url and primary_token:
-        validation_results["servers"]["primary"] = {
-            "url": primary_url,
-            "name": os.getenv("RUNDECK_NAME", "primary"),
-            "api_version": os.getenv("RUNDECK_API_VERSION", "47"),
-        }
-
-    # Check additional servers
+    # Check additional servers first
+    additional_servers_found = False
     for i in range(1, 10):
         url = os.getenv(f"RUNDECK_URL_{i}")
         token = os.getenv(f"RUNDECK_API_TOKEN_{i}")
@@ -153,10 +139,33 @@ def validate_environment() -> dict[str, Any]:
                 "name": os.getenv(f"RUNDECK_NAME_{i}", f"server_{i}"),
                 "api_version": os.getenv(f"RUNDECK_API_VERSION_{i}", "47"),
             }
+            additional_servers_found = True
         elif url or token:
             validation_results["warnings"].append(
                 f"Incomplete configuration for server {i}: {'missing token' if url else 'missing URL'}"
             )
+
+    # Only require primary server if no numbered servers are configured
+    if primary_url and primary_token:
+        validation_results["servers"]["primary"] = {
+            "url": primary_url,
+            "name": os.getenv("RUNDECK_NAME", "primary"),
+            "api_version": os.getenv("RUNDECK_API_VERSION", "47"),
+        }
+    elif not additional_servers_found:
+        # Only error if no numbered servers were found
+        if not primary_url:
+            validation_results["errors"].append("RUNDECK_URL environment variable is not set and no numbered servers configured")
+            validation_results["valid"] = False
+
+        if not primary_token:
+            validation_results["errors"].append("RUNDECK_API_TOKEN environment variable is not set and no numbered servers configured")
+            validation_results["valid"] = False
+
+    # Ensure at least one server is configured
+    if not validation_results["servers"]:
+        validation_results["errors"].append("No Rundeck servers configured - set either RUNDECK_URL/RUNDECK_API_TOKEN or numbered variants")
+        validation_results["valid"] = False
 
     return validation_results
 
