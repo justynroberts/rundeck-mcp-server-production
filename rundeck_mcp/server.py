@@ -148,33 +148,47 @@ class RundeckMCPServer:
 
     async def run(self):
         """Run the server."""
+        import sys
+
+        print("DEBUG: Starting Rundeck MCP Server...", file=sys.stderr)
         logger.info("Starting Rundeck MCP Server...")
 
-        # Initialize client manager
-        client_manager = get_client_manager()
-
-        # Optional health check - don't let it block server startup
         try:
-            health_status = client_manager.health_check_all()
-            healthy_servers = [name for name, status in health_status.items() if status]
+            # Initialize client manager
+            print("DEBUG: Initializing client manager...", file=sys.stderr)
+            client_manager = get_client_manager()
 
-            if not healthy_servers:
-                logger.warning("No healthy Rundeck servers found during startup check")
-            else:
-                logger.info(f"Connected to {len(healthy_servers)} healthy server(s): {', '.join(healthy_servers)}")
+            # Optional health check - don't let it block server startup
+            try:
+                print("DEBUG: Running health checks...", file=sys.stderr)
+                health_status = client_manager.health_check_all()
+                healthy_servers = [name for name, status in health_status.items() if status]
+
+                if not healthy_servers:
+                    logger.warning("No healthy Rundeck servers found during startup check")
+                else:
+                    logger.info(f"Connected to {len(healthy_servers)} healthy server(s): {', '.join(healthy_servers)}")
+            except Exception as e:
+                print(f"DEBUG: Health check error: {e}", file=sys.stderr)
+                logger.warning(f"Health check failed during startup: {e}")
+                logger.info("Server will start anyway - health checks will be performed on demand")
+
+            # Run the server
+            print("DEBUG: Starting MCP server with stdio...", file=sys.stderr)
+            async with stdio_server() as streams:
+                print("DEBUG: Got stdio streams, starting server.run...", file=sys.stderr)
+                await self.server.run(
+                    streams[0],
+                    streams[1],
+                    InitializationOptions(
+                        server_name="rundeck-mcp-server", server_version="1.0.0", capabilities=self.server.capabilities
+                    ),
+                )
         except Exception as e:
-            logger.warning(f"Health check failed during startup: {e}")
-            logger.info("Server will start anyway - health checks will be performed on demand")
-
-        # Run the server
-        async with stdio_server() as streams:
-            await self.server.run(
-                streams[0],
-                streams[1],
-                InitializationOptions(
-                    server_name="rundeck-mcp-server", server_version="1.0.0", capabilities=self.server.capabilities
-                ),
-            )
+            print(f"DEBUG: Exception in server.run: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+            raise
 
 
 async def main(enable_write_tools: bool = False):
