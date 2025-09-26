@@ -1,5 +1,7 @@
 """Project management tools."""
 
+from typing import Any
+
 from ..client import get_client
 from ..models.base import ListResponseModel
 from ..models.rundeck import Project, ProjectStats
@@ -36,7 +38,7 @@ def create_project(
     description: str = "",
     config: dict[str, str] | None = None,
     server: str | None = None,
-) -> dict[str, any]:
+) -> dict[str, Any]:
     """Create a new Rundeck project.
 
     Args:
