@@ -18,6 +18,7 @@ read_tools = [
 ]
 
 write_tools = [
+    *project_tools["write"],
     *job_tools["write"],
     *execution_tools["write"],
     *system_tools["write"],

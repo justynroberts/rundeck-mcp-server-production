@@ -567,18 +567,16 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
                     "cleanup",
                 ]
             )
-        ):
-            # Save previous step if exists
-            if current_step_lines:
-                step_command = "\n".join(current_step_lines)
-                steps.append(
-                    {
-                        "exec": step_command,
-                        "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
-                    }
-                )
-                step_counter += 1
-                current_step_lines = []
+        ) and current_step_lines:
+            step_command = "\n".join(current_step_lines)
+            steps.append(
+                {
+                    "exec": step_command,
+                    "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
+                }
+            )
+            step_counter += 1
+            current_step_lines = []
 
         current_step_lines.append(line)
 
@@ -663,13 +661,24 @@ def _create_job_options_from_variables(variables: list[str]) -> dict[str, Any]:
 
 
 def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
-    """Replace variable references with Rundeck option syntax."""
+    """Replace variable references with Rundeck option syntax.
+
+    Rules:
+    - One line commands: use ${option.variablename} format
+    - Multi-line scripts: use @option.variablename@ format
+    """
     modified_command = command
+    is_single_line = len([line for line in command.split('\n') if line.strip()]) <= 1
 
     for var in variables:
-        # Replace $VAR and ${VAR} with @option.VAR@
-        modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
-        modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+        if is_single_line:
+            # Single line command - use ${option.VAR} format
+            modified_command = re.sub(rf"\${{{var}}}", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
+            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
+        else:
+            # Multi-line script - use @option.VAR@ format
+            modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
 
     return modified_command
 
@@ -702,7 +711,9 @@ def _generate_markdown_documentation(name: str, description: str, variables: lis
     doc += "## Notes\n\n"
     doc += "- Job runs locally if no target nodes specified\n"
     doc += "- Variables are automatically extracted and created as job options\n"
-    doc += "- Variable substitution uses @option.VARIABLENAME@ format\n"
+    doc += "- Variable substitution rules:\n"
+    doc += "  - Single-line commands: `${option.VARIABLENAME}` format\n"
+    doc += "  - Multi-line scripts: `@option.VARIABLENAME@` format\n"
 
     return doc
 
@@ -1016,11 +1027,40 @@ def create_job_from_json(
             raise ValueError("JSON must contain a list of job definitions")
 
         # Convert JSON to YAML for Rundeck import
-        # Fix common JSON format issues
+        # Fix common JSON format issues and enhance jobs
         for job in parsed_jobs:
+            # Extract all script/command content for variable extraction
+            all_scripts = []
+
+            # Collect scripts from sequence
+            if "sequence" in job:
+                if isinstance(job["sequence"], list):
+                    for step in job["sequence"]:
+                        if "script" in step:
+                            all_scripts.append(step["script"])
+                        elif "exec" in step:
+                            all_scripts.append(step["exec"])
+                elif isinstance(job["sequence"], dict) and "commands" in job["sequence"]:
+                    for cmd in job["sequence"]["commands"]:
+                        if "script" in cmd:
+                            all_scripts.append(cmd["script"])
+                        elif "exec" in cmd:
+                            all_scripts.append(cmd["exec"])
+
+            # Extract variables from all scripts
+            all_variables = set()
+            for script in all_scripts:
+                if script:
+                    variables = _extract_variables_from_command(script)
+                    all_variables.update(variables)
+
+            all_variables = sorted(list(all_variables))
+
+            # Create or enhance job options
+            existing_options = {}
+
             # Fix options format - convert array to dict if needed
             if "options" in job and isinstance(job["options"], list):
-                options_dict = {}
                 for opt in job["options"]:
                     if isinstance(opt, dict) and "name" in opt:
                         opt_name = opt.pop("name")
@@ -1040,24 +1080,46 @@ def create_job_from_json(
                             yaml_option["regex"] = opt["regex"]
                         if "regexError" in opt:
                             yaml_option["regexError"] = opt["regexError"]
-                        options_dict[opt_name] = yaml_option
-                job["options"] = options_dict
+                        existing_options[opt_name] = yaml_option
+            elif "options" in job and isinstance(job["options"], dict):
+                existing_options = job["options"]
+
+            # Add extracted variables as job options (if not already present)
+            if all_variables:
+                extracted_options = _create_job_options_from_variables(all_variables)
+                # Merge existing options with extracted ones (existing takes precedence)
+                for var, config in extracted_options.items():
+                    if var not in existing_options:
+                        existing_options[var] = config
+
+            # Set the final options
+            job["options"] = existing_options if existing_options else {}
 
             # Fix sequence format - ensure it's the right structure
-            if "sequence" in job:
-                if isinstance(job["sequence"], list):
-                    # Convert list of steps to proper sequence format
-                    steps = job["sequence"]
-                    job["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": []}
-                    for step in steps:
-                        if "script" in step:
-                            # Convert script to exec command
-                            command = {"exec": step["script"]}
-                            if "description" in step:
-                                command["description"] = step["description"]
-                            job["sequence"]["commands"].append(command)
-                        elif "exec" in step or "script" in step:
-                            job["sequence"]["commands"].append(step)
+            if "sequence" in job and isinstance(job["sequence"], list):
+                # Convert list of steps to proper sequence format
+                steps = job["sequence"]
+                job["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": []}
+                for step in steps:
+                    if "script" in step:
+                        # Convert script to exec command and apply variable substitution
+                        script_content = step["script"]
+                        if all_variables:
+                            script_content = _substitute_variables_in_command(script_content, all_variables)
+                        command = {"exec": script_content}
+                        if "description" in step:
+                            command["description"] = step["description"]
+                        job["sequence"]["commands"].append(command)
+                    elif "exec" in step:
+                        # Apply variable substitution to exec commands
+                        exec_content = step["exec"]
+                        if all_variables:
+                            exec_content = _substitute_variables_in_command(exec_content, all_variables)
+                        step_copy = step.copy()
+                        step_copy["exec"] = exec_content
+                        job["sequence"]["commands"].append(step_copy)
+                    else:
+                        job["sequence"]["commands"].append(step)
 
             # Fix variable substitution format
             job_str = json.dumps(job)

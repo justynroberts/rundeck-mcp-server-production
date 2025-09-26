@@ -31,6 +31,61 @@ def get_projects(server: str | None = None) -> ListResponseModel[Project]:
     return ListResponseModel[Project](response=projects, total_count=len(projects))
 
 
+def create_project(
+    name: str,
+    description: str = "",
+    config: dict[str, str] | None = None,
+    server: str | None = None,
+) -> dict[str, any]:
+    """Create a new Rundeck project.
+
+    Args:
+        name: Project name (must be unique)
+        description: Project description (optional)
+        config: Project configuration properties (optional)
+        server: Server name to create project on (optional)
+
+    Returns:
+        Project creation response
+
+    Example:
+        create_project(
+            name="my-new-project",
+            description="A new project for automation",
+            config={
+                "project.nodeCache.enabled": "true",
+                "project.nodeCache.firstLoadSynch": "true",
+                "project.ssh-authentication": "privateKey",
+                "resources.source.1.config.format": "resourcexml"
+            },
+            server="demo"
+        )
+    """
+    client = get_client(server)
+
+    # Build project data
+    project_data = {
+        "name": name,
+        "description": description or f"Project {name}",
+        "config": config or {}
+    }
+
+    # Add default configuration if none provided
+    if not config:
+        project_data["config"] = {
+            "project.nodeCache.enabled": "true",
+            "project.nodeCache.firstLoadSynch": "true",
+            "resources.source.1.type": "file",
+            "resources.source.1.config.format": "resourcexml",
+            "resources.source.1.config.file": f"/var/rundeck/projects/{name}/etc/resources.xml",
+            "resources.source.1.config.includeServerNode": "true",
+            "resources.source.1.config.generateFileAutomatically": "true"
+        }
+
+    response = client._make_request("POST", "projects", json=project_data)
+    return response
+
+
 def get_project_stats(project: str, server: str | None = None) -> ProjectStats:
     """Get statistics for a specific project.
 
@@ -77,5 +132,7 @@ project_tools = {
         get_projects,
         get_project_stats,
     ],
-    "write": [],
+    "write": [
+        create_project,
+    ],
 }

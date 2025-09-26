@@ -1,4 +1,8 @@
 {
+  "_global_guidance": {
+    "description": "Global guidance for all Rundeck MCP tools",
+    "prompt": "IMPORTANT: If a tool encounters errors (node not found, project not found, job not found, connection issues, etc.), it's okay to stop and report the error clearly. Do not attempt workarounds or continue with partial information. Fail fast and fail clearly. When nodes are not found or unavailable, stop execution immediately and inform the user."
+  },
   "list_servers": {
     "description": "List all configured Rundeck servers",
     "prompt": "Shows all configured Rundeck servers with their URLs and API versions.display as a table. Use this to see which servers are available before specifying a server in other tools."
@@ -6,6 +10,10 @@
   "get_projects": {
     "description": "Get all Rundeck projects available in your instance",
     "prompt": "This tool retrieves all projects from your Rundeck server. Use this to discover available projects before working with jobs or executions. Optionally specify a server name to target a specific Rundeck instance."
+  },
+  "create_project": {
+    "description": "Create a new Rundeck project",
+    "prompt": "Create a new project in Rundeck with optional configuration. Projects organize jobs, executions, and resources. Automatically sets up default node resources configuration. Provide project name (required), description (optional), and custom configuration properties (optional). Use descriptive names and always specify the target server."
   },
   "get_jobs": {
     "description": "Get jobs from a Rundeck project with optional filtering",
@@ -21,7 +29,7 @@
   },
   "create_job": {
     "description": "Create a new Rundeck job in a project with enhanced features",
-    "prompt": "Create a new job with enhanced automation features. AUTOMATICALLY breaks jobs into script steps, documents in markdown, extracts variables as job options, and uses @option.VARIABLENAME@ substitution. Variables found at the top of scripts become job options. If no target machines specified, runs locally. Always confirm job details and show summary including extracted variables, generated steps, and markdown documentation before creation."
+    "prompt": "Create a new job with intelligent automation features. Follow these rules: 1) AUTOMATICALLY break jobs into logical script steps, 2) Document the job description in markdown format with prerequisites section, 3) Extract variables from scripts ($VAR, ${VAR}, VAR=) and create job options with type inference (secure for passwords, select for environments/regions), 4) VARIABLE SUBSTITUTION RULES: For single-line commands use ${option.VARIABLENAME} format, for multi-line scripts use @option.VARIABLENAME@ format (single @, NOT double @@), 5) If no target machines specified, set job to run locally, 6) Script language: if not specified, attempt bash first, then python, powershell also acceptable, 7) Secure password options MUST have default values - use placeholder defaults like 'changeme' or 'password123'. Always show summary of extracted variables, generated steps, and markdown documentation before creation."
   },
   "create_job_from_yaml": {
     "description": "Create job(s) from YAML definition",
@@ -29,7 +37,7 @@
   },
   "create_job_from_json": {
     "description": "Create job(s) from JSON definition",
-    "prompt": "Import jobs from JSON format. Automatically converts JSON to YAML format for Rundeck. Fixes common JSON format issues like options arrays, variable substitution (@@option.VAR@@ to @option.VAR@), and sequence structures. Validates JSON structure before import. Show conversion results and import summary."
+    "prompt": "Import jobs from JSON format with intelligent enhancements. Follow these rules: 1) Convert JSON to YAML format for Rundeck import, 2) Extract variables from scripts ($VAR, ${VAR}, VAR=) and create job options with type inference, 3) VARIABLE SUBSTITUTION RULES: For single-line commands use ${option.VARIABLENAME} format, for multi-line scripts use @option.VARIABLENAME@ format (single @, NOT double @@), 4) Fix JSON format issues (options arrays to dictionary, sequence structures), 5) If no target machines specified, set job to run locally, 6) Document job description in markdown format with prerequisites section, 7) Script language: if not specified, attempt bash first, then python, powershell also acceptable, 8) Secure password options MUST have default values - use placeholder defaults like 'changeme' or 'password123'. Show conversion results, extracted variables, and import summary."
   },
   "create_multiple_jobs_from_yaml": {
     "description": "Create multiple jobs from YAML file content",
@@ -134,5 +142,9 @@
   "visualize_job": {
     "description": "Generate a visual flowchart representation of a Rundeck job",
     "prompt": "Create a modern, interactive flowchart visualization of a Rundeck job using Mermaid diagram syntax. Shows the complete execution flow including job configuration, node filters, options, workflow steps, and error handlers. The generated Mermaid code can be rendered in various tools like Mermaid Live Editor, GitHub markdown, VS Code, Confluence, and Jira. Includes color-coded nodes for different step types, emoji indicators for visual clarity, and a comprehensive legend. Perfect for documentation, training, troubleshooting, and understanding complex job workflows at a glance."
+  },
+  "run_adhoc_command": {
+    "description": "Execute ad hoc commands directly on Rundeck nodes",
+    "prompt": "Execute shell commands directly on nodes without creating permanent job definitions. ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - DIRECT SYSTEM ACCESS at the beginning. Specify the command to run, target nodes via filter pattern (use 'name: localhost' for local execution, or specific node names). If node filter doesn't match any nodes, STOP IMMEDIATELY and report the error - do not continue. Returns execution ID and output details. Perfect for troubleshooting, quick maintenance tasks, one-off commands, and system diagnostics. For local execution use 'name: localhost' as node_filter. Requires confirmation before execution due to direct system access."
   }
 }
