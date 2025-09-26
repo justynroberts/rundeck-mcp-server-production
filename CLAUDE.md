@@ -98,7 +98,7 @@ This is a **Model Context Protocol (MCP) server** that provides AI integration w
 
 ### MCP Tools Architecture
 
-The server exposes 30+ tools across these categories:
+The server exposes 34 tools across these categories:
 
 #### Read-Only Tools (Always Available)
 - **Server Management**: `list_servers`, `health_check_servers`

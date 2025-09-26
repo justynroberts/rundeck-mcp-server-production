@@ -95,6 +95,10 @@
     "description": "Get a summary of nodes in the project including counts and statistics",
     "prompt": "Generate a comprehensive overview of all nodes in a project including total counts, operating system distribution, status breakdown, most common tags, and infrastructure statistics. Ideal for infrastructure health assessment and capacity planning."
   },
+  "suggest_node_filters": {
+    "description": "Suggest node filter patterns for targeting specific nodes",
+    "prompt": "ESSENTIAL for Windows node troubleshooting. When adhoc commands fail with 'No nodes matched', use this tool to find the correct filter syntax. Provide a search term (like 'Server-1' or 'windows') to get specific suggestions for that node. Returns exact filter patterns, regex options, and troubleshooting guidance for targeting Windows and other remote nodes."
+  },
   "abort_execution": {
     "description": "Abort a running execution",
     "prompt": "ALWAYS show red square emoji and Impact assessment: HIGH RISK at the beginning. Emergency stop for running job executions. Use when jobs are consuming excessive resources, running longer than expected, or need immediate termination. Requires confirmation before proceeding. Shows abort status and provides execution details."
@@ -145,6 +149,6 @@
   },
   "run_adhoc_command": {
     "description": "Execute ad hoc commands directly on Rundeck nodes",
-    "prompt": "Execute shell commands directly on nodes without creating permanent job definitions. ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - DIRECT SYSTEM ACCESS at the beginning. Specify the command to run, target nodes via filter pattern (use 'name: localhost' for local execution, or specific node names). If node filter doesn't match any nodes, STOP IMMEDIATELY and report the error - do not continue. Returns execution ID and output details. Perfect for troubleshooting, quick maintenance tasks, one-off commands, and system diagnostics. For local execution use 'name: localhost' as node_filter. Requires confirmation before execution due to direct system access."
+    "prompt": "ESSENTIAL for Windows node troubleshooting. Execute shell commands directly on nodes without creating permanent job definitions. ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - DIRECT SYSTEM ACCESS at the beginning. Specify the command to run, target nodes via filter pattern (REQUIRED - no defaults). Examples: 'name: Server-1-infra' for exact node name, 'name: localhost' for local execution, '.*Windows.*' for regex patterns, 'osFamily: windows' for OS filtering. If node filter doesn't match any nodes, STOP IMMEDIATELY and report the error with troubleshooting guidance - do not continue. Use get_nodes or suggest_node_filters tools first to identify correct node names and filter syntax. Returns execution ID and output details. Perfect for Windows diagnostics, quick maintenance tasks, one-off commands, and system troubleshooting. Requires explicit node_filter parameter and confirmation before execution due to direct system access."
   }
 }

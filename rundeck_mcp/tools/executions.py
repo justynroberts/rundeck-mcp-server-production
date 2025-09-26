@@ -182,7 +182,7 @@ def delete_execution(execution_id: str, server: str | None = None) -> dict[str, 
 def run_adhoc_command(
     project: str,
     command: str,
-    node_filter: str = "name: localhost",
+    node_filter: str,
     server: str | None = None,
     follow_output: bool = True,
     as_user: str | None = None,
@@ -193,7 +193,12 @@ def run_adhoc_command(
     Args:
         project: Project name
         command: Command to execute on the nodes
-        node_filter: Node filter pattern (default: "name: localhost" for local execution)
+        node_filter: Node filter pattern (REQUIRED). Examples:
+                    - "name: Server-1-infra" (exact node name)
+                    - ".*Server-1.*" (regex pattern)
+                    - "hostname: 192.168.1.100" (by hostname)
+                    - "tags: windows" (by tag)
+                    - "osFamily: windows" (by OS family)
         server: Server name to query (optional)
         follow_output: Whether to wait and return output details (default: True)
         as_user: User to run the command as (optional)
@@ -211,8 +216,16 @@ def run_adhoc_command(
             nodes_response = client._make_request("GET", f"project/{project}/resources", params={"filter": node_filter})
             if not nodes_response or len(nodes_response) == 0:
                 return {
-                    "error": f"No nodes found matching filter: '{node_filter}'",
-                    "suggestion": "For local execution use 'name: localhost'. Check available nodes with get_nodes tool.",
+                    "error": f"No nodes found matching filter: '{node_filter}' in project '{project}'",
+                    "troubleshooting": [
+                        "1. Check if the node name is exact: 'name: Server-1-infra'",
+                        "2. Try regex pattern: '.*Server-1.*' or '.*infra.*'",
+                        "3. Filter by OS: 'osFamily: windows' or 'osName: Windows'",
+                        "4. Filter by hostname: 'hostname: [actual-ip-or-hostname]'",
+                        "5. Use get_nodes tool to see all available nodes in this project",
+                        "6. Verify the Windows node is properly configured with WinRM/PowerShell executor"
+                    ],
+                    "suggestion": "Use get_nodes tool first to see available nodes and their exact names/attributes.",
                 }
         except Exception as e:
             # If we can't validate, continue anyway (backwards compatibility)
@@ -236,8 +249,17 @@ def run_adhoc_command(
         error_str = str(e).lower()
         if "no nodes matched" in error_str or "no matching nodes" in error_str:
             return {
-                "error": f"No nodes matched the filter: '{node_filter}'",
-                "suggestion": "Use 'name: localhost' for local execution or check available nodes with get_nodes tool.",
+                "error": f"Rundeck execution failed: No nodes matched filter '{node_filter}'",
+                "troubleshooting": [
+                    "The command attempted to run but Rundeck couldn't find matching nodes",
+                    "This means the node exists in inventory but the filter syntax is wrong",
+                    "Try different filter formats:",
+                    "  - Exact name: 'name: Server-1-infra'",
+                    "  - Regex: '.*Server.*' or '.*infra.*'",
+                    "  - By attribute: 'osFamily: windows'",
+                    "  - By hostname: 'hostname: [ip-address]'"
+                ],
+                "next_steps": "1. Use get_nodes tool to see exact node names and attributes, 2. Adjust filter syntax accordingly"
             }
         raise
 
