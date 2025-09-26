@@ -26,11 +26,14 @@ def serve(
     ),
 ):
     """Start the Rundeck MCP Server."""
-    setup_logging(log_level)
+    # Use WARNING level for MCP mode to reduce noise in logs, INFO for terminal mode
+    actual_log_level = log_level if sys.stdout.isatty() else "WARNING"
+    setup_logging(actual_log_level)
 
     if validate_config:
         validation = validate_environment()
         if not validation["valid"]:
+            # Use stderr for error messages to avoid interfering with MCP JSON
             typer.echo("Configuration validation failed:", err=True)
             for error in validation["errors"]:
                 typer.echo(f"  ❌ {error}", err=True)
@@ -40,13 +43,17 @@ def serve(
             for warning in validation["warnings"]:
                 typer.echo(f"  ⚠️  {warning}", err=True)
 
-        server_count = len(validation["servers"])
-        typer.echo(f"✅ Configuration valid - {server_count} server(s) configured")
+        # Only show success messages when not in MCP mode (detect by checking if stdout is a tty)
+        if sys.stdout.isatty():
+            server_count = len(validation["servers"])
+            typer.echo(f"✅ Configuration valid - {server_count} server(s) configured")
 
-    if enable_write_tools:
-        typer.echo("⚠️  Write operations enabled - destructive operations are allowed")
-    else:
-        typer.echo("🔒 Read-only mode - write operations disabled")
+    # Only show mode messages when not in MCP mode
+    if sys.stdout.isatty():
+        if enable_write_tools:
+            typer.echo("⚠️  Write operations enabled - destructive operations are allowed")
+        else:
+            typer.echo("🔒 Read-only mode - write operations disabled")
 
     try:
         asyncio.run(server_main(enable_write_tools=enable_write_tools))

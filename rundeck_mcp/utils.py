@@ -176,12 +176,15 @@ def setup_logging(level: str = "INFO"):
     Args:
         level: Logging level
     """
+    import sys
+
     log_level = getattr(logging, level.upper(), logging.INFO)
 
+    # Always use stderr for logging to avoid interfering with MCP stdout
     logging.basicConfig(
         level=log_level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[logging.StreamHandler()],
+        handlers=[logging.StreamHandler(sys.stderr)],
     )
 
     # Set specific loggers
