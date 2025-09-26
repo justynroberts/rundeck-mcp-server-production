@@ -309,3 +309,50 @@ jobs = get_jobs(
 6. **Modern Python**: Python 3.12+, uv dependency management, strict type checking
 
 This architecture provides a robust, secure, and maintainable foundation for Rundeck automation through AI assistants while maintaining high code quality standards.
+
+## Common Startup Issues and Solutions
+
+### Issue 1: Python Version Compatibility
+**Error**: `ERROR: Package 'rundeck-mcp-server' requires a different Python: 3.13.5 not in '<3.13,>=3.12'`
+**Solution**: Update `pyproject.toml` to remove upper Python version limit: `requires-python = ">=3.12"`
+
+### Issue 2: Missing Dependencies
+**Error**: `ModuleNotFoundError: No module named 'typer'`
+**Solution**: Install dependencies with virtual environment:
+```bash
+rm -rf .venv && python3 -m venv .venv
+source .venv/bin/activate && pip install -e .
+```
+
+### Issue 3: Missing Type Imports
+**Error**: `NameError: name 'Any' is not defined`
+**Solution**: Add missing typing imports to affected modules:
+```python
+from typing import Any
+```
+
+### Issue 4: Incorrect Command Usage
+**Error**: `No such option: --enable-write-tools`
+**Solution**: Use proper command structure:
+```bash
+python -m rundeck_mcp serve --enable-write-tools --log-level DEBUG
+```
+
+### Issue 5: Configuration Validation
+**Error**: `RUNDECK_URL environment variable is not set`
+**Solution**: Either set environment variables or skip validation during testing:
+```bash
+python -m rundeck_mcp serve --no-validate-config --enable-write-tools
+```
+
+### Startup Verification Commands
+```bash
+# Quick development setup
+make dev-setup
+
+# Test server startup (should show debug messages)
+.venv/bin/python -m rundeck_mcp serve --no-validate-config --enable-write-tools --log-level DEBUG
+
+# Verify server responds to MCP protocol
+echo '{"jsonrpc": "2.0", "method": "list_tools", "id": 1}' | .venv/bin/python -m rundeck_mcp serve --no-validate-config
+```
