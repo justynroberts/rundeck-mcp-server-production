@@ -191,7 +191,7 @@ Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
 ### Complete Tool Reference
 
-The server provides **34 tools** organized by category and access level:
+The server provides **36 tools** organized by category and access level:
 
 | Tool Name | Type | Category | Description |
 |-----------|------|----------|-------------|
@@ -204,6 +204,7 @@ The server provides **34 tools** organized by category and access level:
 | **PROJECT TOOLS** ||||
 | `get_projects` | 🔍 Read | Projects | List all projects in Rundeck |
 | `get_project_stats` | 🔍 Read | Projects | Get project statistics and metrics |
+| `create_project` | ✏️ Write | Projects | Create new Rundeck project |
 | **JOB TOOLS** ||||
 | `get_jobs` | 🔍 Read | Jobs | List jobs in a project with filtering |
 | `get_job_definition` | 🔍 Read | Jobs | Get complete job definition and configuration |
@@ -218,7 +219,6 @@ The server provides **34 tools** organized by category and access level:
 | `disable_job` | ✏️ Write | Jobs | Disable an enabled job |
 | `enable_job_schedule` | ✏️ Write | Jobs | Enable job scheduling |
 | `disable_job_schedule` | ✏️ Write | Jobs | Disable job scheduling |
-| `delete_job` | ✏️ Write | Jobs | 🔴 **PERMANENTLY DELETE** a job (requires confirmation) |
 | **EXECUTION TOOLS** ||||
 | `get_executions` | 🔍 Read | Executions | List executions with filtering |
 | `get_execution_status` | 🔍 Read | Executions | Get execution status and details |
@@ -227,6 +227,7 @@ The server provides **34 tools** organized by category and access level:
 | `abort_execution` | ✏️ Write | Executions | Abort a running execution |
 | `retry_execution` | ✏️ Write | Executions | Retry a failed execution |
 | `delete_execution` | ✏️ Write | Executions | Delete execution history |
+| `run_adhoc_command` | ✏️ Write | Executions | Execute ad hoc commands on nodes |
 | **NODE TOOLS** ||||
 | `get_nodes` | 🔍 Read | Nodes | List nodes with filtering |
 | `get_node_details` | 🔍 Read | Nodes | Get detailed node information |
@@ -241,25 +242,17 @@ The server provides **34 tools** organized by category and access level:
 | Category | Read Tools | Write Tools | Total |
 |----------|------------|-------------|-------|
 | System | 4 | 1 | 5 |
-| Projects | 2 | 0 | 2 |
+| Projects | 2 | 1 | 3 |
 | Jobs | 4 | 10 | 14 |
-| Executions | 4 | 3 | 7 |
+| Executions | 4 | 4 | 8 |
 | Nodes | 3 | 0 | 3 |
 | Analytics | 3 | 0 | 3 |
-| **Total** | **20** | **14** | **34** |
+| **Total** | **20** | **16** | **36** |
 
 ### Access Control
 
 - **🔍 Read Tools (20)**: Always available, safe for production use
-- **✏️ Write Tools (14)**: Require `--enable-write-tools` flag, can modify Rundeck state
-
-### 🚨 **DESTRUCTIVE OPERATIONS**
-
-The `delete_job` tool is marked as **HIGH RISK** and implements mandatory safety protocols:
-- **Two-step confirmation process**: First call shows deletion preview, second call with `confirmed=True` executes
-- **Detailed job information display** before deletion
-- **Irreversible warning messages** with clear impact assessment
-- **Production safety**: Prevents accidental deletion through explicit confirmation requirement
+- **✏️ Write Tools (16)**: Require `--enable-write-tools` flag, can modify Rundeck state
 
 ## 📝 Usage Examples
 

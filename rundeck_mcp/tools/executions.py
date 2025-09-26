@@ -179,6 +179,100 @@ def delete_execution(execution_id: str, server: str | None = None) -> dict[str, 
     return client._make_request("DELETE", f"execution/{execution_id}")
 
 
+def run_adhoc_command(
+    project: str,
+    command: str,
+    node_filter: str = "name: localhost",
+    server: str | None = None,
+    follow_output: bool = True,
+    as_user: str | None = None,
+    validate_nodes: bool = True,
+) -> dict[str, Any]:
+    """Execute an ad hoc command on Rundeck nodes.
+
+    Args:
+        project: Project name
+        command: Command to execute on the nodes
+        node_filter: Node filter pattern (default: "name: localhost" for local execution)
+        server: Server name to query (optional)
+        follow_output: Whether to wait and return output details (default: True)
+        as_user: User to run the command as (optional)
+        validate_nodes: Whether to validate nodes exist before execution (default: True)
+
+    Returns:
+        Execution details including ID, status, and output if requested
+    """
+    client = get_client(server)
+    
+    # Validate nodes exist if requested
+    if validate_nodes:
+        try:
+            # Check if nodes match the filter
+            nodes_response = client._make_request("GET", f"project/{project}/resources", params={"filter": node_filter})
+            if not nodes_response or len(nodes_response) == 0:
+                return {
+                    "error": f"No nodes found matching filter: '{node_filter}'",
+                    "suggestion": "For local execution use 'name: localhost'. Check available nodes with get_nodes tool.",
+                }
+        except Exception as e:
+            # If we can't validate, continue anyway (backwards compatibility)
+            pass
+
+    # Build payload for ad hoc command execution
+    payload = {
+        "exec": command,
+        "nodefilter": node_filter,
+        "project": project,
+    }
+
+    if as_user:
+        payload["asUser"] = as_user
+
+    # Execute the ad hoc command
+    try:
+        response = client._make_request("POST", f"project/{project}/run/command", json=payload)
+    except Exception as e:
+        # Check if error is related to no nodes matching
+        error_str = str(e).lower()
+        if "no nodes matched" in error_str or "no matching nodes" in error_str:
+            return {
+                "error": f"No nodes matched the filter: '{node_filter}'",
+                "suggestion": "Use 'name: localhost' for local execution or check available nodes with get_nodes tool.",
+            }
+        raise
+
+    # Extract execution ID
+    execution_id = str(response.get("execution", {}).get("id", ""))
+
+    if not execution_id:
+        return {"error": "Failed to get execution ID", "response": response}
+
+    result = {
+        "execution_id": execution_id,
+        "project": project,
+        "command": command,
+        "node_filter": node_filter,
+    }
+
+    if follow_output:
+        # Wait briefly for execution to start
+        import time
+
+        time.sleep(1)
+
+        # Get execution status and output
+        try:
+            status = get_execution_status(execution_id, server)
+            output = get_execution_output(execution_id, server)
+
+            result["status"] = status.model_dump()
+            result["output"] = output
+        except Exception as e:
+            result["warning"] = f"Could not retrieve output: {str(e)}"
+
+    return result
+
+
 # Tool definitions
 execution_tools = {
     "read": [
@@ -191,5 +285,6 @@ execution_tools = {
         abort_execution,
         retry_execution,
         delete_execution,
+        run_adhoc_command,
     ],
 }
