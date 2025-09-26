@@ -153,14 +153,18 @@ class RundeckMCPServer:
         # Initialize client manager
         client_manager = get_client_manager()
 
-        # Health check servers
-        health_status = client_manager.health_check_all()
-        healthy_servers = [name for name, status in health_status.items() if status]
+        # Optional health check - don't let it block server startup
+        try:
+            health_status = client_manager.health_check_all()
+            healthy_servers = [name for name, status in health_status.items() if status]
 
-        if not healthy_servers:
-            logger.warning("No healthy Rundeck servers found!")
-        else:
-            logger.info(f"Connected to {len(healthy_servers)} healthy server(s): {', '.join(healthy_servers)}")
+            if not healthy_servers:
+                logger.warning("No healthy Rundeck servers found during startup check")
+            else:
+                logger.info(f"Connected to {len(healthy_servers)} healthy server(s): {', '.join(healthy_servers)}")
+        except Exception as e:
+            logger.warning(f"Health check failed during startup: {e}")
+            logger.info("Server will start anyway - health checks will be performed on demand")
 
         # Run the server
         async with stdio_server() as streams:
