@@ -74,6 +74,26 @@ uv run rundeck-mcp serve --enable-write-tools
 uvx rundeck-mcp-server serve --enable-write-tools
 ```
 
+## ✨ Recent Improvements
+
+### MCP Protocol Compliance (Latest)
+- **Fixed Parameter Validation Issue**: Resolved "job retrieval functions aren't accepting the required project parameter properly"
+- **Dynamic Schema Generation**: Automatic input schema generation from function signatures using Python `inspect` module
+- **Enhanced Type Safety**: Proper JSON schema types (string, integer, boolean) with required/optional parameter detection
+- **Better User Experience**: Claude Desktop now shows proper parameter forms and validation errors
+- **Union Type Support**: Handles `str | None` patterns for optional parameters with automatic descriptions
+
+### Tool Consolidation
+- **Simplified Interface**: Reduced from 35 to 30 tools by consolidating related functions
+- **`job_import`**: Single tool supporting both YAML and JSON formats (replaces 3 separate tools)
+- **`job_control`**: Unified enable/disable operations with operation parameter
+- **Enhanced UUIDs**: 16-digit alphanumeric job identifiers for better tracking
+
+### Variable Substitution
+- **Consistent Format**: All job scripts now use `@option.VARIABLENAME@` format regardless of script type
+- **Intelligent Extraction**: Automatic variable detection from scripts with type inference
+- **Secure Defaults**: Password options automatically get placeholder defaults
+
 ## 📦 Deployment
 
 ### Production Deployment

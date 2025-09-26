@@ -95,6 +95,37 @@ This is a **Model Context Protocol (MCP) server** that provides AI integration w
    - Tool prompt management and loading
    - Environment validation and configuration
    - Logging setup and error formatting
+   - **MCP Schema Generation**: Dynamic input schema generation from function signatures
+
+### MCP Protocol Compliance
+
+The server implements full MCP protocol compliance with automatic input schema generation:
+
+#### Dynamic Schema Generation
+- **Automatic Parameter Detection**: Uses Python `inspect` module to extract function signatures
+- **Type Mapping**: Converts Python types to JSON schema types (str→string, int→integer, bool→boolean, etc.)
+- **Required/Optional Detection**: Identifies required parameters (no default value) vs optional (has default)
+- **Union Type Support**: Handles `str | None` patterns for optional string parameters
+- **Parameter Descriptions**: Automatic descriptions for common parameter names (project, server, job_id, etc.)
+
+#### Schema Validation Benefits
+- **Proper Parameter Passing**: MCP protocol correctly validates and passes parameters to tools
+- **Type Safety**: Ensures parameters match expected types before tool execution
+- **Required Parameter Enforcement**: Tools receive all required parameters or fail validation
+- **Enhanced User Experience**: Claude Desktop shows proper parameter forms and validation
+
+Example generated schema for `get_jobs(project: str, group: str | None = None, server: str | None = None)`:
+```json
+{
+  "type": "object",
+  "properties": {
+    "project": {"type": "string", "description": "Project name"},
+    "group": {"type": "string", "description": "Job group filter (optional)"},
+    "server": {"type": "string", "description": "Server name to query (optional)"}
+  },
+  "required": ["project"]
+}
+```
 
 ### MCP Tools Architecture
 
@@ -224,6 +255,42 @@ The server integrates with Claude Desktop via MCP protocol:
    def test_new_tool(self, mock_get_client):
        # Test implementation
    ```
+
+5. **Verify input schema generation**:
+   ```python
+   # Test that parameters are correctly detected
+   from rundeck_mcp.utils import generate_input_schema
+   schema = generate_input_schema(new_tool)
+   assert "param1" in schema["required"]  # param1 has no default
+   assert "server" not in schema["required"]  # server has default None
+   ```
+
+### MCP Schema Generation Guidelines
+
+When adding new tools, follow these patterns for optimal schema generation:
+
+1. **Use clear type annotations**:
+   ```python
+   def tool(project: str, limit: int = 20, enabled: bool = True) -> ResponseModel:
+       # Generates proper integer/boolean types in schema
+   ```
+
+2. **Use descriptive parameter names**:
+   - `project` → "Project name" (automatic description)
+   - `server` → "Server name to query (optional)"
+   - `job_id` → "Job ID"
+   - `execution_id` → "Execution ID"
+
+3. **Handle optional parameters correctly**:
+   ```python
+   def tool(required_param: str, optional_param: str | None = None):
+       # required_param will be in schema["required"]
+       # optional_param will be optional
+   ```
+
+4. **Avoid complex parameter types**:
+   - Use simple types: `str`, `int`, `bool`, `list`, `dict`
+   - Avoid custom classes or complex nested types in function signatures
 
 ### Server vs Project Distinction
 
@@ -356,6 +423,27 @@ python -m rundeck_mcp serve --enable-write-tools --log-level DEBUG
 ```bash
 python -m rundeck_mcp serve --no-validate-config --enable-write-tools
 ```
+
+### Issue 6: Parameter Validation Problems
+**Problem**: "job retrieval functions aren't accepting the required project parameter properly"
+**Root Cause**: Empty MCP input schemas prevent proper parameter validation
+**Solution**: The server now automatically generates proper input schemas from function signatures. Tools should receive required parameters correctly. If issues persist:
+```bash
+# Test schema generation for a specific tool
+python3 -c "
+from rundeck_mcp.utils import generate_input_schema
+from rundeck_mcp.tools.jobs import get_jobs
+import json
+print(json.dumps(generate_input_schema(get_jobs), indent=2))
+"
+```
+
+### Issue 7: MCP Protocol Compliance
+**Error**: Claude Desktop not showing tool parameters or validation errors
+**Solution**: Ensure `generate_input_schema()` is working correctly and server is using generated schemas:
+- Check that tools have proper input schemas (not empty `{}`)
+- Verify parameter types match function signatures
+- Confirm required parameters are identified correctly
 
 ### Startup Verification Commands
 ```bash
