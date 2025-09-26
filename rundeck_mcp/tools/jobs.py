@@ -676,21 +676,14 @@ def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
     """Replace variable references with Rundeck option syntax.
 
     Rules:
-    - One line commands: use ${option.variablename} format
-    - Multi-line scripts: use @option.variablename@ format
+    - ALWAYS use @option.variablename@ format for any script type
     """
     modified_command = command
-    is_single_line = len([line for line in command.split('\n') if line.strip()]) <= 1
 
     for var in variables:
-        if is_single_line:
-            # Single line command - use ${option.VAR} format
-            modified_command = re.sub(rf"\${{{var}}}", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
-            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
-        else:
-            # Multi-line script - use @option.VAR@ format
-            modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
-            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+        # Always use @option.VAR@ format for all scripts and commands
+        modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+        modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
 
     return modified_command
 
@@ -1167,6 +1160,203 @@ def create_job_from_json(
     return response
 
 
+def modify_job(
+    job_id: str,
+    name: str | None = None,
+    command: str | None = None,
+    description: str | None = None,
+    group: str | None = None,
+    options: dict[str, Any] | None = None,
+    schedule: dict[str, Any] | None = None,
+    node_filter: dict[str, Any] | None = None,
+    timeout: str | None = None,
+    retry_count: int | None = None,
+    execution_enabled: bool | None = None,
+    schedule_enabled: bool | None = None,
+    multiple_executions: bool | None = None,
+    log_level: str | None = None,
+    enhance_job: bool = True,
+    confirmed: bool = False,
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Modify an existing Rundeck job by deleting and recreating with same UUID.
+
+    🟡 MEDIUM RISK: This operation deletes and recreates the job, preserving the UUID.
+
+    IMPORTANT: This operation follows the pattern: delete job, modify, and replace
+    with the same UUID. The job will be temporarily unavailable during the process.
+
+    Args:
+        job_id: Job ID to modify
+        name: New job name (optional - uses existing if not provided)
+        command: New command to execute (optional - uses existing if not provided)
+        description: New job description (optional - uses existing if not provided)
+        group: New job group name (optional - uses existing if not provided)
+        options: New job input options (optional - uses existing if not provided)
+        schedule: New schedule configuration (optional - uses existing if not provided)
+        node_filter: New node targeting configuration (optional - uses existing if not provided)
+        timeout: New maximum runtime (optional - uses existing if not provided)
+        retry_count: New number of retry attempts (optional - uses existing if not provided)
+        execution_enabled: New execution enabled state (optional - uses existing if not provided)
+        schedule_enabled: New schedule enabled state (optional - uses existing if not provided)
+        multiple_executions: New concurrent executions setting (optional - uses existing if not provided)
+        log_level: New logging level (optional - uses existing if not provided)
+        enhance_job: Enable job enhancement features (default: True)
+        confirmed: Must be True to confirm modification (required safety check)
+        server: Server name/alias to use (e.g., "demo"), not the project name
+
+    Returns:
+        Job modification response
+
+    Raises:
+        ValueError: If confirmed is not True
+    """
+    if not confirmed:
+        # Get job details for user confirmation
+        try:
+            job_def = get_job_definition(job_id, server)
+            job_info = f"Job '{job_def.name}' (ID: {job_id}) in project '{job_def.project}'"
+            if job_def.description:
+                job_info += f"\nDescription: {job_def.description}"
+        except Exception:
+            job_info = f"Job ID: {job_id}"
+
+        raise ValueError(
+            f"🚨 CONFIRMATION REQUIRED 🚨\n\n"
+            f"You are about to MODIFY this job:\n{job_info}\n\n"
+            f"This operation will:\n"
+            f"1. Delete the existing job\n"
+            f"2. Create a new job with the same UUID\n"
+            f"3. Apply the specified modifications\n\n"
+            f"The job will be temporarily unavailable during this process.\n\n"
+            f"To proceed, call this function again with confirmed=True"
+        )
+
+    # Get existing job definition to preserve UUID and unspecified values
+    existing_job = get_job_definition(job_id, server)
+    existing_uuid = existing_job.uuid
+    project = existing_job.project
+
+    # Use existing values for unspecified parameters
+    final_name = name if name is not None else existing_job.name
+    final_description = description if description is not None else existing_job.description
+    final_group = group if group is not None else existing_job.group
+    final_execution_enabled = execution_enabled if execution_enabled is not None else existing_job.execution_enabled
+    final_schedule_enabled = schedule_enabled if schedule_enabled is not None else existing_job.schedule_enabled
+    final_multiple_executions = multiple_executions if multiple_executions is not None else existing_job.multiple_executions
+    final_log_level = log_level if log_level is not None else existing_job.log_level
+
+    # Handle complex fields
+    final_options = options if options is not None else (existing_job.options or {})
+    final_schedule = schedule if schedule is not None else existing_job.schedule
+    final_node_filter = node_filter if node_filter is not None else existing_job.node_filter
+    final_timeout = timeout if timeout is not None else existing_job.timeout
+    final_retry_count = retry_count if retry_count is not None else existing_job.retry_count
+
+    # Extract command from existing job if not provided
+    if command is None:
+        # Extract command from existing workflow steps
+        if existing_job.workflow_steps:
+            final_command = "\n".join([step.get("exec", "") for step in existing_job.workflow_steps if "exec" in step])
+            if not final_command:
+                final_command = "\n".join([step.get("script", "") for step in existing_job.workflow_steps if "script" in step])
+        else:
+            final_command = "echo 'No command specified'"
+    else:
+        final_command = command
+
+    # Step 1: Delete the existing job
+    delete_response = delete_job(job_id, confirmed=True, server=server)
+
+    # Step 2: Create the modified job with the same UUID
+    try:
+        # Build the job definition with preserved UUID
+        job_def = {
+            "uuid": existing_uuid,  # Preserve the original UUID
+            "name": final_name,
+            "description": final_description,
+            "group": final_group,
+            "loglevel": final_log_level,
+            "multipleExecutions": final_multiple_executions,
+            "executionEnabled": final_execution_enabled,
+            "scheduleEnabled": final_schedule_enabled,
+        }
+
+        # Process command with enhancement if enabled
+        if enhance_job:
+            # Extract variables from command
+            variables = _extract_variables_from_command(final_command)
+
+            # Break command into logical steps
+            steps = _break_command_into_steps(final_command, final_name)
+
+            # Apply variable substitution to steps using @option.VAR@ format
+            for step in steps:
+                step["exec"] = _substitute_variables_in_command(step["exec"], variables)
+
+            # Generate enhanced description with markdown
+            if variables:
+                markdown_doc = _generate_markdown_documentation(final_name, final_description, variables, steps)
+                job_def["description"] = f"{final_description}\n\n{markdown_doc}" if final_description else markdown_doc
+
+                # Merge extracted options with provided options
+                extracted_options = _create_job_options_from_variables(variables)
+                extracted_options.update(final_options)
+                final_options = extracted_options
+
+            job_def["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": steps}
+        else:
+            # Simple single-step job
+            job_def["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": [{"exec": final_command}]}
+
+        # Add optional fields
+        if final_options:
+            job_def["options"] = final_options
+
+        if final_schedule:
+            if isinstance(final_schedule, dict) and "cron" in final_schedule:
+                job_def["schedule"] = {"crontab": final_schedule["cron"]}
+            else:
+                job_def["schedule"] = final_schedule
+
+        if final_node_filter:
+            job_def["nodefilters"] = final_node_filter
+
+        if final_timeout:
+            job_def["timeout"] = final_timeout
+
+        if final_retry_count:
+            job_def["retry"] = str(final_retry_count)
+
+        # Convert to YAML and import
+        job_yaml = yaml.dump([job_def], default_flow_style=False)
+
+        client = get_client(server)
+        headers = {"Content-Type": "application/yaml"}
+        params = {"fileformat": "yaml", "dupeOption": "create"}
+
+        response = client._make_request(
+            "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
+        )
+
+        return {
+            "success": True,
+            "message": f"Job successfully modified and recreated with UUID {existing_uuid}",
+            "delete_response": delete_response,
+            "create_response": response,
+            "preserved_uuid": existing_uuid
+        }
+
+    except Exception as e:
+        return {
+            "success": False,
+            "error": f"Failed to recreate job after deletion: {str(e)}",
+            "delete_response": delete_response,
+            "preserved_uuid": existing_uuid,
+            "warning": "Original job was deleted but recreation failed. Manual intervention may be required."
+        }
+
+
 # Tool definitions
 job_tools = {
     "read": [
@@ -1182,6 +1372,7 @@ job_tools = {
         create_job_from_yaml,
         create_job_from_json,
         create_multiple_jobs_from_yaml,
+        modify_job,
         enable_job,
         disable_job,
         enable_job_schedule,

@@ -98,7 +98,7 @@ This is a **Model Context Protocol (MCP) server** that provides AI integration w
 
 ### MCP Tools Architecture
 
-The server exposes 34 tools across these categories:
+The server exposes 35 tools across these categories:
 
 #### Read-Only Tools (Always Available)
 - **Server Management**: `list_servers`, `health_check_servers`
@@ -111,8 +111,10 @@ The server exposes 34 tools across these categories:
 
 #### Write Tools (Require `--enable-write-tools`)
 - **Job Execution**: `run_job`, `run_job_with_monitoring`
-- **Job Control**: `enable_job`, `disable_job`, `enable_job_schedule`, `disable_job_schedule`
+- **Job Management**: `create_job`, `create_job_from_yaml`, `create_job_from_json`, `create_multiple_jobs_from_yaml`, `modify_job`
+- **Job Control**: `enable_job`, `disable_job`, `enable_job_schedule`, `disable_job_schedule`, `delete_job`
 - **Execution Control**: `abort_execution`, `retry_execution`, `delete_execution`
+- **Project Management**: `create_project`
 - **System Control**: `set_execution_mode`
 
 ### Multi-Server Support
