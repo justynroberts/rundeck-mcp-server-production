@@ -175,13 +175,15 @@ class RundeckMCPServer:
 
             # Run the server
             print("DEBUG: Starting MCP server with stdio...", file=sys.stderr)
-            async with stdio_server() as streams:
+            async with stdio_server() as (read_stream, write_stream):
                 print("DEBUG: Got stdio streams, starting server.run...", file=sys.stderr)
                 await self.server.run(
-                    streams[0],
-                    streams[1],
+                    read_stream,
+                    write_stream,
                     InitializationOptions(
-                        server_name="rundeck-mcp-server", server_version="1.0.0", capabilities=self.server.capabilities
+                        server_name="rundeck-mcp-server",
+                        server_version="1.0.0",
+                        capabilities=self.server.capabilities
                     ),
                 )
         except Exception as e:

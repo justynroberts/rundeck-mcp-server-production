@@ -6,6 +6,7 @@ import sys
 import typer
 
 from .server import main as server_main
+from .server_simple import main_simple as server_main_simple
 from .utils import setup_logging, validate_environment
 
 app = typer.Typer(
@@ -56,11 +57,15 @@ def serve(
             typer.echo("🔒 Read-only mode - write operations disabled")
 
     try:
-        asyncio.run(server_main(enable_write_tools=enable_write_tools))
+        # Try the simple server first
+        asyncio.run(server_main_simple(enable_write_tools=enable_write_tools))
     except KeyboardInterrupt:
         typer.echo("\\nServer stopped by user")
     except Exception as e:
-        typer.echo(f"Server error: {e}", err=True)
+        if sys.stdout.isatty():
+            typer.echo(f"Server error: {e}", err=True)
+        else:
+            print(f"Server error: {e}", file=sys.stderr)
         sys.exit(1)
 
 
