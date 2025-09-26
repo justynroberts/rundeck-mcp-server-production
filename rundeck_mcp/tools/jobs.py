@@ -404,60 +404,55 @@ def run_job_with_monitoring(
     }
 
 
-def enable_job(job_id: str, server: str | None = None) -> dict[str, Any]:
-    """Enable a job.
+def job_control(
+    job_id: str,
+    operation: str,
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Control job execution and scheduling state.
+
+    🟡 MEDIUM RISK: This operation can disable jobs and affect scheduled execution.
+
+    Consolidates job enable/disable operations for both execution and scheduling.
 
     Args:
-        job_id: Job ID to enable
+        job_id: Job ID to control
+        operation: Control operation to perform:
+                  - "enable": Enable job execution and scheduling
+                  - "disable": Disable job execution and scheduling
+                  - "enable_schedule": Enable only job scheduling (manual execution still works)
+                  - "disable_schedule": Disable only job scheduling (manual execution still works)
         server: Server name to query (optional)
 
     Returns:
-        Response data
+        Response data confirming the operation
+
+    Raises:
+        ValueError: If operation is not one of the supported values
     """
+    valid_operations = ["enable", "disable", "enable_schedule", "disable_schedule"]
+    if operation not in valid_operations:
+        raise ValueError(f"Invalid operation '{operation}'. Must be one of: {', '.join(valid_operations)}")
+
     client = get_client(server)
-    return client._make_request("POST", f"job/{job_id}/enable")
 
+    # Map operations to API endpoints
+    endpoint_map = {
+        "enable": f"job/{job_id}/enable",
+        "disable": f"job/{job_id}/disable",
+        "enable_schedule": f"job/{job_id}/schedule/enable",
+        "disable_schedule": f"job/{job_id}/schedule/disable",
+    }
 
-def disable_job(job_id: str, server: str | None = None) -> dict[str, Any]:
-    """Disable a job.
+    endpoint = endpoint_map[operation]
+    response = client._make_request("POST", endpoint)
 
-    Args:
-        job_id: Job ID to disable
-        server: Server name to query (optional)
+    # Add operation info to response for clarity
+    if isinstance(response, dict):
+        response["operation_performed"] = operation
+        response["job_id"] = job_id
 
-    Returns:
-        Response data
-    """
-    client = get_client(server)
-    return client._make_request("POST", f"job/{job_id}/disable")
-
-
-def enable_job_schedule(job_id: str, server: str | None = None) -> dict[str, Any]:
-    """Enable job schedule.
-
-    Args:
-        job_id: Job ID to enable schedule for
-        server: Server name to query (optional)
-
-    Returns:
-        Response data
-    """
-    client = get_client(server)
-    return client._make_request("POST", f"job/{job_id}/schedule/enable")
-
-
-def disable_job_schedule(job_id: str, server: str | None = None) -> dict[str, Any]:
-    """Disable job schedule.
-
-    Args:
-        job_id: Job ID to disable schedule for
-        server: Server name to query (optional)
-
-    Returns:
-        Response data
-    """
-    client = get_client(server)
-    return client._make_request("POST", f"job/{job_id}/schedule/disable")
+    return response
 
 
 def delete_job(job_id: str, confirmed: bool = False, server: str | None = None) -> dict[str, Any]:
@@ -864,18 +859,23 @@ def create_job(
     return response
 
 
-def create_job_from_yaml(
+def job_import(
     project: str,
-    job_yaml: str,
+    content: str,
+    format: str,
     dupe_option: str = "create",
     uuid_option: str = "remove",
     server: str | None = None,
 ) -> dict[str, Any]:
-    """Create job(s) from YAML definition.
+    """Import jobs from YAML or JSON format with intelligent enhancements.
+
+    Consolidates job import operations for different formats with automatic UUID generation
+    and variable extraction capabilities.
 
     Args:
         project: Project name where jobs will be created
-        job_yaml: YAML string containing job definition(s)
+        content: Job definition content (YAML or JSON string)
+        format: Import format - "yaml" or "json"
         dupe_option: Behavior for duplicate jobs (create, update, skip)
         uuid_option: UUID handling (preserve, remove)
         server: Server name/alias to use (e.g., "demo"), not the project name
@@ -883,8 +883,12 @@ def create_job_from_yaml(
     Returns:
         Job import response
 
-    Example:
-        yaml_content = '''
+    Raises:
+        ValueError: If format is not supported or content is invalid
+
+    Examples:
+        # YAML import
+        yaml_content = \'\'\'
         - name: Hello World Job
           description: A simple greeting job
           loglevel: INFO
@@ -893,123 +897,11 @@ def create_job_from_yaml(
             strategy: node-first
             commands:
               - exec: echo "Hello, World!"
-          schedule:
-            crontab: "0 9 * * MON-FRI"
-        '''
+        \'\'\'
+        job_import(project="my-project", content=yaml_content, format="yaml", server="demo")
 
-        create_job_from_yaml(
-            project="my-project",
-            job_yaml=yaml_content,
-            server="demo"
-        )
-    """
-    client = get_client(server)
-
-    # Validate YAML format
-    try:
-        parsed_jobs = yaml.safe_load(job_yaml)
-        if not isinstance(parsed_jobs, list):
-            raise ValueError("YAML must contain a list of job definitions")
-
-        # Basic validation and UUID generation
-        for i, job in enumerate(parsed_jobs):
-            if not isinstance(job, dict):
-                raise ValueError(f"Job {i + 1} must be a dictionary")
-            if "name" not in job:
-                raise ValueError(f"Job {i + 1} missing required 'name' field")
-            if "sequence" not in job:
-                raise ValueError(f"Job {i + 1} missing required 'sequence' field")
-
-            # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
-            job["uuid"] = _generate_job_uuid()
-
-        # Convert back to YAML with UUIDs
-        job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
-
-    except yaml.YAMLError as e:
-        raise ValueError(f"Invalid YAML format: {e}") from e
-    except Exception as e:
-        raise ValueError(f"YAML validation failed: {e}") from e
-
-    # Import the jobs via the API
-    headers = {"Content-Type": "application/yaml"}
-    params = {"fileformat": "yaml", "dupeOption": dupe_option, "uuidOption": uuid_option}
-
-    response = client._make_request(
-        "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
-    )
-
-    return response
-
-
-def create_multiple_jobs_from_yaml(
-    project: str,
-    yaml_file_content: str,
-    dupe_option: str = "create",
-    uuid_option: str = "remove",
-    server: str | None = None,
-) -> dict[str, Any]:
-    """Create multiple jobs from a YAML file content.
-
-    Args:
-        project: Project name where jobs will be created
-        yaml_file_content: Full YAML file content with multiple job definitions
-        dupe_option: Behavior for duplicate jobs (create, update, skip)
-        uuid_option: UUID handling (preserve, remove)
-        server: Server name/alias to use (e.g., "demo"), not the project name
-
-    Returns:
-        Job import response with details of succeeded/failed/skipped jobs
-
-    Example:
-        yaml_content = '''
-        - name: Job 1
-          description: First job
-          loglevel: INFO
-          sequence:
-            commands:
-              - exec: echo "Job 1"
-
-        - name: Job 2
-          description: Second job
-          loglevel: INFO
-          sequence:
-            commands:
-              - exec: echo "Job 2"
-        '''
-
-        create_multiple_jobs_from_yaml(
-            project="my-project",
-            yaml_file_content=yaml_content,
-            server="demo"
-        )
-    """
-    return create_job_from_yaml(
-        project=project, job_yaml=yaml_file_content, dupe_option=dupe_option, uuid_option=uuid_option, server=server
-    )
-
-
-def create_job_from_json(
-    project: str,
-    json_content: str,
-    dupe_option: str = "create",
-    uuid_option: str = "remove",
-    server: str | None = None,
-) -> dict[str, Any]:
-    """Create job(s) from JSON definition.
-
-    Args:
-        project: Project name where jobs will be created
-        json_content: JSON string containing job definition(s)
-        dupe_option: Behavior for duplicate jobs (create, update, skip)
-        uuid_option: UUID handling (preserve, remove)
-        server: Server name/alias to use (e.g., "demo"), not the project name
-
-    Returns:
-        Job import response
-
-    Example:
-        json_content = '''
+        # JSON import
+        json_content = \'\'\'
         [{
           "name": "Hello World Job",
           "description": "A simple greeting job",
@@ -1017,139 +909,154 @@ def create_job_from_json(
           "sequence": {
             "keepgoing": false,
             "strategy": "node-first",
-            "commands": [
-              {"exec": "echo 'Hello, World!'"}
-            ]
+            "commands": [{"exec": "echo \'Hello, World!\'"}]
           }
         }]
-        '''
-
-        create_job_from_json(
-            project="my-project",
-            json_content=json_content,
-            server="demo"
-        )
+        \'\'\'
+        job_import(project="my-project", content=json_content, format="json", server="demo")
     """
+    valid_formats = ["yaml", "json"]
+    if format not in valid_formats:
+        raise ValueError(f"Invalid format '{format}'. Must be one of: {', '.join(valid_formats)}")
+
     client = get_client(server)
 
-    # Parse JSON and validate structure
-    try:
-        parsed_jobs = json.loads(json_content)
-        if not isinstance(parsed_jobs, list):
-            raise ValueError("JSON must contain a list of job definitions")
+    if format == "yaml":
+        # Handle YAML format
+        try:
+            parsed_jobs = yaml.safe_load(content)
+            if not isinstance(parsed_jobs, list):
+                raise ValueError("YAML must contain a list of job definitions")
 
-        # Convert JSON to YAML for Rundeck import
-        # Fix common JSON format issues and enhance jobs
-        for job in parsed_jobs:
-            # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
-            job["uuid"] = _generate_job_uuid()
-            # Extract all script/command content for variable extraction
-            all_scripts = []
+            # Basic validation and UUID generation
+            for i, job in enumerate(parsed_jobs):
+                if not isinstance(job, dict):
+                    raise ValueError(f"Job {i + 1} must be a dictionary")
+                if "name" not in job:
+                    raise ValueError(f"Job {i + 1} missing required \'name\' field")
+                if "sequence" not in job:
+                    raise ValueError(f"Job {i + 1} missing required \'sequence\' field")
 
-            # Collect scripts from sequence
-            if "sequence" in job:
-                if isinstance(job["sequence"], list):
-                    for step in job["sequence"]:
+                # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
+                job["uuid"] = _generate_job_uuid()
+
+            # Convert back to YAML with UUIDs
+            job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
+
+        except yaml.YAMLError as e:
+            raise ValueError(f"Invalid YAML format: {e}") from e
+        except Exception as e:
+            raise ValueError(f"YAML validation failed: {e}") from e
+
+    elif format == "json":
+        # Handle JSON format with enhanced processing
+        try:
+            parsed_jobs = json.loads(content)
+            if not isinstance(parsed_jobs, list):
+                raise ValueError("JSON must contain a list of job definitions")
+
+            # Convert JSON to YAML for Rundeck import with enhancements
+            for job in parsed_jobs:
+                # Add UUID if not present (always generate new 16-digit alphanumeric UUID)
+                job["uuid"] = _generate_job_uuid()
+
+                # Extract all script/command content for variable extraction
+                all_scripts = []
+
+                # Collect scripts from sequence
+                if "sequence" in job:
+                    if isinstance(job["sequence"], list):
+                        for step in job["sequence"]:
+                            if "script" in step:
+                                all_scripts.append(step["script"])
+                            elif "exec" in step:
+                                all_scripts.append(step["exec"])
+                    elif isinstance(job["sequence"], dict) and "commands" in job["sequence"]:
+                        for cmd in job["sequence"]["commands"]:
+                            if "script" in cmd:
+                                all_scripts.append(cmd["script"])
+                            elif "exec" in cmd:
+                                all_scripts.append(cmd["exec"])
+
+                # Extract variables from all scripts
+                all_variables = set()
+                for script in all_scripts:
+                    if script:
+                        variables = _extract_variables_from_command(script)
+                        all_variables.update(variables)
+
+                all_variables = sorted(list(all_variables))
+
+                # Create or enhance job options
+                existing_options = {}
+
+                # Fix options format - convert array to dict if needed
+                if "options" in job and isinstance(job["options"], list):
+                    for opt in job["options"]:
+                        if isinstance(opt, dict) and "name" in opt:
+                            opt_name = opt.pop("name")
+                            # Convert JSON format to YAML format
+                            yaml_option = {}
+                            if "description" in opt:
+                                yaml_option["description"] = opt["description"]
+                            if "required" in opt:
+                                yaml_option["required"] = opt["required"]
+                            if "value" in opt:
+                                yaml_option["defaultValue"] = opt["value"]
+                            if "values" in opt:
+                                yaml_option["values"] = opt["values"]
+                            if "secure" in opt:
+                                yaml_option["secure"] = opt["secure"]
+                            existing_options[opt_name] = yaml_option
+                    job["options"] = existing_options
+                elif "options" in job and isinstance(job["options"], dict):
+                    existing_options = job["options"]
+
+                # Add extracted variables as new options
+                if all_variables:
+                    extracted_options = _create_job_options_from_variables(all_variables)
+                    extracted_options.update(existing_options)
+                    job["options"] = extracted_options
+
+                # Fix sequence structure - ensure commands array format
+                if "sequence" in job and isinstance(job["sequence"], list):
+                    # Convert list of steps to proper sequence format
+                    job["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": job["sequence"]}
+                elif "sequence" in job and isinstance(job["sequence"], dict):
+                    # Ensure it has commands array
+                    if "commands" not in job["sequence"]:
+                        job["sequence"]["commands"] = []
+
+                    # Process each command in the sequence with variable substitution
+                    for step in job["sequence"]["commands"]:
                         if "script" in step:
-                            all_scripts.append(step["script"])
+                            # Apply variable substitution to script commands
+                            script_content = step["script"]
+                            if all_variables:
+                                script_content = _substitute_variables_in_command(script_content, all_variables)
+                            step["script"] = script_content
                         elif "exec" in step:
-                            all_scripts.append(step["exec"])
-                elif isinstance(job["sequence"], dict) and "commands" in job["sequence"]:
-                    for cmd in job["sequence"]["commands"]:
-                        if "script" in cmd:
-                            all_scripts.append(cmd["script"])
-                        elif "exec" in cmd:
-                            all_scripts.append(cmd["exec"])
+                            # Apply variable substitution to exec commands
+                            exec_content = step["exec"]
+                            if all_variables:
+                                exec_content = _substitute_variables_in_command(exec_content, all_variables)
+                            step["exec"] = exec_content
 
-            # Extract variables from all scripts
-            all_variables = set()
-            for script in all_scripts:
-                if script:
-                    variables = _extract_variables_from_command(script)
-                    all_variables.update(variables)
+                # Fix variable substitution format
+                job_str = json.dumps(job)
+                # Replace @@option.VAR@@ with @option.VAR@
+                job_str = re.sub(r"@@option\.([^@]+)@@", r"@option.\\1@", job_str)
+                job.update(json.loads(job_str))
 
-            all_variables = sorted(list(all_variables))
+            # Convert to YAML
+            job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
 
-            # Create or enhance job options
-            existing_options = {}
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON format: {e}") from e
+        except Exception as e:
+            raise ValueError(f"JSON processing failed: {e}") from e
 
-            # Fix options format - convert array to dict if needed
-            if "options" in job and isinstance(job["options"], list):
-                for opt in job["options"]:
-                    if isinstance(opt, dict) and "name" in opt:
-                        opt_name = opt.pop("name")
-                        # Convert JSON format to YAML format
-                        yaml_option = {}
-                        if "description" in opt:
-                            yaml_option["description"] = opt["description"]
-                        if "required" in opt:
-                            yaml_option["required"] = opt["required"]
-                        if "value" in opt:
-                            yaml_option["defaultValue"] = opt["value"]
-                        if "values" in opt:
-                            yaml_option["values"] = opt["values"]
-                        if "enforced" in opt:
-                            yaml_option["enforced"] = opt["enforced"]
-                        if "regex" in opt:
-                            yaml_option["regex"] = opt["regex"]
-                        if "regexError" in opt:
-                            yaml_option["regexError"] = opt["regexError"]
-                        existing_options[opt_name] = yaml_option
-            elif "options" in job and isinstance(job["options"], dict):
-                existing_options = job["options"]
-
-            # Add extracted variables as job options (if not already present)
-            if all_variables:
-                extracted_options = _create_job_options_from_variables(all_variables)
-                # Merge existing options with extracted ones (existing takes precedence)
-                for var, config in extracted_options.items():
-                    if var not in existing_options:
-                        existing_options[var] = config
-
-            # Set the final options
-            job["options"] = existing_options if existing_options else {}
-
-            # Fix sequence format - ensure it's the right structure
-            if "sequence" in job and isinstance(job["sequence"], list):
-                # Convert list of steps to proper sequence format
-                steps = job["sequence"]
-                job["sequence"] = {"keepgoing": False, "strategy": "node-first", "commands": []}
-                for step in steps:
-                    if "script" in step:
-                        # Convert script to exec command and apply variable substitution
-                        script_content = step["script"]
-                        if all_variables:
-                            script_content = _substitute_variables_in_command(script_content, all_variables)
-                        command = {"exec": script_content}
-                        if "description" in step:
-                            command["description"] = step["description"]
-                        job["sequence"]["commands"].append(command)
-                    elif "exec" in step:
-                        # Apply variable substitution to exec commands
-                        exec_content = step["exec"]
-                        if all_variables:
-                            exec_content = _substitute_variables_in_command(exec_content, all_variables)
-                        step_copy = step.copy()
-                        step_copy["exec"] = exec_content
-                        job["sequence"]["commands"].append(step_copy)
-                    else:
-                        job["sequence"]["commands"].append(step)
-
-            # Fix variable substitution format
-            job_str = json.dumps(job)
-            # Replace @@option.VAR@@ with @option.VAR@
-            job_str = re.sub(r"@@option\.([^@]+)@@", r"@option.\1@", job_str)
-            job.update(json.loads(job_str))
-
-        # Convert to YAML
-        job_yaml = yaml.dump(parsed_jobs, default_flow_style=False)
-
-    except json.JSONDecodeError as e:
-        raise ValueError(f"Invalid JSON format: {e}") from e
-    except Exception as e:
-        raise ValueError(f"JSON processing failed: {e}") from e
-
-    # Import the jobs via the API using YAML format
+    # Import the jobs via the API
     headers = {"Content-Type": "application/yaml"}
     params = {"fileformat": "yaml", "dupeOption": dupe_option, "uuidOption": uuid_option}
 
@@ -1369,14 +1276,9 @@ job_tools = {
         run_job,
         run_job_with_monitoring,
         create_job,
-        create_job_from_yaml,
-        create_job_from_json,
-        create_multiple_jobs_from_yaml,
+        job_import,
         modify_job,
-        enable_job,
-        disable_job,
-        enable_job_schedule,
-        disable_job_schedule,
+        job_control,
         delete_job,
     ],
 }

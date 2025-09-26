@@ -98,7 +98,7 @@ This is a **Model Context Protocol (MCP) server** that provides AI integration w
 
 ### MCP Tools Architecture
 
-The server exposes 35 tools across these categories:
+The server exposes 30 tools across these categories, with consolidated tools for better usability:
 
 #### Read-Only Tools (Always Available)
 - **Server Management**: `list_servers`, `health_check_servers`
@@ -111,11 +111,21 @@ The server exposes 35 tools across these categories:
 
 #### Write Tools (Require `--enable-write-tools`)
 - **Job Execution**: `run_job`, `run_job_with_monitoring`
-- **Job Management**: `create_job`, `create_job_from_yaml`, `create_job_from_json`, `create_multiple_jobs_from_yaml`, `modify_job`
-- **Job Control**: `enable_job`, `disable_job`, `enable_job_schedule`, `disable_job_schedule`, `delete_job`
+- **Job Management**: `create_job`, `job_import`, `modify_job`, `delete_job`
+- **Job Control**: `job_control` (consolidated enable/disable operations)
 - **Execution Control**: `abort_execution`, `retry_execution`, `delete_execution`
 - **Project Management**: `create_project`
 - **System Control**: `set_execution_mode`
+
+#### Consolidated Tools
+- **`job_import`**: Replaces `create_job_from_yaml`, `create_job_from_json`, `create_multiple_jobs_from_yaml`
+  - Single tool supporting both YAML and JSON formats
+  - Automatic format detection and processing
+  - Enhanced variable extraction and UUID generation
+- **`job_control`**: Replaces `enable_job`, `disable_job`, `enable_job_schedule`, `disable_job_schedule`
+  - Single tool with operation parameter for all control functions
+  - Consistent risk assessment and confirmation patterns
+  - Reduced complexity while maintaining functionality
 
 ### Multi-Server Support
 

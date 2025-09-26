@@ -31,17 +31,9 @@
     "description": "Create a new Rundeck job in a project with enhanced features",
     "prompt": "Create a new job with intelligent automation features. Follow these rules: 1) AUTOMATICALLY generate 16-digit alphanumeric UUID for job identification, 2) AUTOMATICALLY break jobs into logical script steps, 3) Document the job description in markdown format with prerequisites section, 4) Extract variables from scripts ($VAR, ${VAR}, VAR=) and create job options with type inference (secure for passwords, select for environments/regions), 5) VARIABLE SUBSTITUTION RULES: ALWAYS use @option.VARIABLENAME@ format for any script type (single @, NOT double @@), 6) If no target machines specified, set job to run locally, 7) Script language: if not specified, attempt bash first, then python, powershell also acceptable, 8) Secure password options MUST have default values - use placeholder defaults like 'changeme' or 'password123'. Always show summary of extracted variables, generated steps, and markdown documentation before creation."
   },
-  "create_job_from_yaml": {
-    "description": "Create job(s) from YAML definition",
-    "prompt": "Import jobs directly from YAML format. AUTOMATICALLY generates 16-digit alphanumeric UUIDs for all jobs. Accepts complete job definitions in Rundeck YAML format. Validates YAML structure and required fields before import. Perfect for importing existing job definitions or complex jobs with multiple steps. Show YAML validation results and import summary."
-  },
-  "create_job_from_json": {
-    "description": "Create job(s) from JSON definition",
-    "prompt": "Import jobs from JSON format with intelligent enhancements. Follow these rules: 1) AUTOMATICALLY generate 16-digit alphanumeric UUIDs for all jobs, 2) Convert JSON to YAML format for Rundeck import, 3) Extract variables from scripts ($VAR, ${VAR}, VAR=) and create job options with type inference, 4) VARIABLE SUBSTITUTION RULES: ALWAYS use @option.VARIABLENAME@ format for any script type (single @, NOT double @@), 5) Fix JSON format issues (options arrays to dictionary, sequence structures), 6) If no target machines specified, set job to run locally, 7) Document job description in markdown format with prerequisites section, 8) Script language: if not specified, attempt bash first, then python, powershell also acceptable, 9) Secure password options MUST have default values - use placeholder defaults like 'changeme' or 'password123'. Show conversion results, extracted variables, and import summary."
-  },
-  "create_multiple_jobs_from_yaml": {
-    "description": "Create multiple jobs from YAML file content",
-    "prompt": "Bulk import multiple jobs from a single YAML file content. AUTOMATICALLY generates 16-digit alphanumeric UUIDs for all jobs. Supports importing entire job collections at once. Validates all job definitions before import and provides detailed results showing succeeded, failed, and skipped jobs. Ideal for migrating or deploying job collections."
+  "job_import": {
+    "description": "Import jobs from YAML or JSON format with intelligent enhancements",
+    "prompt": "Consolidated job import tool supporting both YAML and JSON formats. AUTOMATICALLY generates 16-digit alphanumeric UUIDs for all jobs. Specify format parameter as 'yaml' or 'json'. For JSON: converts to YAML, extracts variables, creates job options with type inference, fixes format issues. For YAML: validates structure and generates UUIDs. VARIABLE SUBSTITUTION RULES: ALWAYS use @option.VARIABLENAME@ format for any script type (single @, NOT double @@). Supports single jobs or multiple jobs in one import. Perfect for migrating job collections or importing complex job definitions. Show import summary with validation results."
   },
   "modify_job": {
     "description": "Modify an existing Rundeck job by deleting and recreating with same UUID",
@@ -115,21 +107,9 @@
     "description": "Delete an execution from the system",
     "prompt": "ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - DATA LOSS at the beginning. Permanently remove execution records from Rundeck. Use for cleanup, compliance, or removing sensitive execution data. Cannot be undone. Requires confirmation. Ideal for housekeeping and storage management."
   },
-  "enable_job": {
-    "description": "Enable a job (allows execution and scheduling)",
-    "prompt": "Activate a job for both manual execution and scheduled runs. Show green square emoji and Impact assessment: LOW RISK. Use after maintenance, testing, or when bringing jobs back online. The job becomes fully operational and can be triggered manually or by schedule."
-  },
-  "disable_job": {
-    "description": "Disable a job (prevents execution and scheduling)",
-    "prompt": "ALWAYS show amber square emoji and Impact assessment: MEDIUM RISK - SERVICE IMPACT at the beginning. Completely disable a job, preventing both manual and scheduled execution. Use during maintenance, when jobs are problematic, or for temporary service suspension. Requires confirmation for production jobs."
-  },
-  "enable_job_schedule": {
-    "description": "Enable job scheduling (allows scheduled execution)",
-    "prompt": "Activate only the scheduled execution of a job while keeping manual execution available. Show green square emoji and Impact assessment: LOW RISK. Perfect for resuming automated workflows after maintenance windows. Manual job execution remains unaffected."
-  },
-  "disable_job_schedule": {
-    "description": "Disable job scheduling (prevents scheduled execution but allows manual execution)",
-    "prompt": "Disable automatic scheduled execution while preserving manual execution capability. Show amber square emoji and Impact assessment: LOW-MEDIUM RISK - AUTOMATION IMPACT. Ideal for maintenance windows, schedule coordination, or when manual control is needed. Scheduled runs stop but manual triggers still work."
+  "job_control": {
+    "description": "Control job execution and scheduling state",
+    "prompt": "🟡 MEDIUM RISK: Consolidated job control operations. Specify operation parameter: 'enable' (activate job execution and scheduling - GREEN SQUARE, LOW RISK), 'disable' (completely disable job - AMBER SQUARE, MEDIUM RISK - SERVICE IMPACT), 'enable_schedule' (enable only scheduling - GREEN SQUARE, LOW RISK), 'disable_schedule' (disable only scheduling, manual execution still works - AMBER SQUARE, LOW-MEDIUM RISK - AUTOMATION IMPACT). Use for maintenance windows, bringing jobs online/offline, or controlling automation vs manual execution. Always show appropriate risk level emoji and impact assessment based on operation type."
   },
   "delete_job": {
     "description": "🔴 PERMANENTLY DELETE a job (DESTRUCTIVE - requires confirmation)",
