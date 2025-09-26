@@ -53,6 +53,11 @@ class RundeckMCPServer:
                 Tool(
                     name=tool_name,
                     description=description,
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    },
                     annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True),
                 )
             )
@@ -77,6 +82,11 @@ class RundeckMCPServer:
                     Tool(
                         name=tool_name,
                         description=description,
+                        inputSchema={
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        },
                         annotations=ToolAnnotations(
                             readOnlyHint=False, destructiveHint=is_destructive, idempotentHint=not is_destructive
                         ),
