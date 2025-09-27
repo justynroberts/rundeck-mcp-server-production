@@ -9,6 +9,7 @@ from mcp.types import (
     CallToolRequest,
     CallToolResult,
     ListToolsRequest,
+    ServerCapabilities,
     TextContent,
     Tool,
     ToolAnnotations,
@@ -187,7 +188,10 @@ class RundeckMCPServer:
                     InitializationOptions(
                         server_name="rundeck-mcp-server",
                         server_version="1.0.0",
-                        capabilities=self.server.capabilities
+                        capabilities=ServerCapabilities(
+                            tools={},
+                            experimental={}
+                        )
                     ),
                 )
         except Exception as e:
