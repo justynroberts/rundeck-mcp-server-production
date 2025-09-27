@@ -23,7 +23,7 @@ classifiers = [
 ]
 requires-python = ">=3.12"
 dependencies = [
-    "mcp[cli]>=1.8.0",
+    "mcp[cli]>=1.8.0,<1.13.0",
     "typer>=0.16.0",
     "pydantic>=2.0.0",
     "requests>=2.32.0",
@@ -50,8 +50,9 @@ Repository = "https://github.com/your-username/rundeck-mcp-server"
 Issues = "https://github.com/your-username/rundeck-mcp-server/issues"
 Documentation = "https://github.com/your-username/rundeck-mcp-server/blob/main/README.md"
 
-[tool.setuptools]
-packages = ["rundeck_mcp"]
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rundeck_mcp*"]
 
 [tool.setuptools.package-data]
 "*" = ["*.json", "*.md", "*.txt"]

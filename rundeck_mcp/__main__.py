@@ -8,6 +8,7 @@ import typer
 from .server import main as server_main
 from .server_simple import main_simple as server_main_simple
 from .server_working import main_working as server_main_working
+from .server_final import main_final as server_main_final
 from .utils import setup_logging, validate_environment
 
 app = typer.Typer(
@@ -58,8 +59,8 @@ def serve(
             typer.echo("🔒 Read-only mode - write operations disabled")
 
     try:
-        # Use the working server implementation
-        asyncio.run(server_main_working(enable_write_tools=enable_write_tools))
+        # Use the final working server implementation
+        asyncio.run(server_main_final(enable_write_tools=enable_write_tools))
     except KeyboardInterrupt:
         typer.echo("\\nServer stopped by user")
     except Exception as e:
