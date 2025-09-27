@@ -2,6 +2,8 @@
 
 A production-ready MCP (Model Context Protocol) server for Rundeck automation platform. Manage projects, jobs, executions, and infrastructure directly from Claude Desktop or any MCP-enabled client.
 
+> 📋 **Having issues?** Check the [Troubleshooting Guide](./TROUBLESHOOTING.md) for solutions to common MCP protocol and configuration problems.
+
 ## 🚀 Quick Start
 
 ### Prerequisites
@@ -76,7 +78,14 @@ uvx rundeck-mcp-server serve --enable-write-tools
 
 ## ✨ Recent Improvements
 
-### MCP Protocol Compliance (Latest)
+### MCP Protocol Compliance & Tool Restoration (Latest)
+- **Restored Full Tool Set**: Fixed MCP protocol compatibility issues to restore all 30+ Rundeck tools
+- **uvx Configuration Fixed**: Proper `uvx --from /path/to/project rundeck-mcp serve` pattern for development
+- **Handler Signature Compatibility**: Resolved "Invalid request parameters" errors with MCP library versions
+- **Complete Troubleshooting Guide**: Added comprehensive troubleshooting documentation for MCP issues
+- **Multi-Server Support**: Full support for multiple Rundeck environments via environment variables
+
+### Previous Improvements
 - **Fixed Parameter Validation Issue**: Resolved "job retrieval functions aren't accepting the required project parameter properly"
 - **Dynamic Schema Generation**: Automatic input schema generation from function signatures using Python `inspect` module
 - **Enhanced Type Safety**: Proper JSON schema types (string, integer, boolean) with required/optional parameter detection
@@ -183,10 +192,27 @@ uv run python tests/get_claude_config.py --write-tools
 
 Edit `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
+**Development Installation (from local project):**
 ```json
 {
   "mcpServers": {
-    "rundeck": {
+    "rundeck-mcp": {
+      "command": "uvx",
+      "args": ["--from", "/path/to/rundeck-mcp-server-production", "rundeck-mcp", "serve", "--enable-write-tools"],
+      "env": {
+        "RUNDECK_URL": "https://your-rundeck.com",
+        "RUNDECK_API_TOKEN": "your-token-here"
+      }
+    }
+  }
+}
+```
+
+**Global Installation (via PyPI):**
+```json
+{
+  "mcpServers": {
+    "rundeck-mcp": {
       "command": "uvx",
       "args": ["rundeck-mcp-server", "serve", "--enable-write-tools"],
       "env": {

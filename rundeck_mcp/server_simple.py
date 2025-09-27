@@ -29,7 +29,7 @@ def create_server(enable_write_tools: bool = False) -> Server:
     tool_prompts = load_tool_prompts()
 
     @server.list_tools()
-    async def handle_list_tools(params=None) -> list[Tool]:
+    async def handle_list_tools() -> list[Tool]:
         """Handle the list_tools request."""
         tools = []
 

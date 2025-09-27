@@ -2,7 +2,7 @@
 
 import logging
 import os
-from typing import Any
+from typing import Any, Dict, List, Optional
 from urllib.parse import urljoin
 
 import requests
