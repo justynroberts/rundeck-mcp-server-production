@@ -7,6 +7,7 @@ import sys
 from typing import Any
 
 from mcp.server import Server
+from mcp.server.models import InitializationOptions
 from mcp.types import (
     CallToolRequest,
     CallToolResult,
@@ -148,4 +149,9 @@ async def main_simple(enable_write_tools: bool = False):
     from mcp.server.stdio import stdio_server
     async with stdio_server() as (read_stream, write_stream):
         print("DEBUG: Got streams, starting server", file=sys.stderr)
-        await server.run(read_stream, write_stream, server.create_initialization_options())
+        initialization_options = InitializationOptions(
+            server_name="rundeck-mcp-server",
+            server_version="1.0.0",
+            capabilities=server.capabilities
+        )
+        await server.run(read_stream, write_stream, initialization_options)

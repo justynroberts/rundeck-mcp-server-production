@@ -57,8 +57,8 @@ def serve(
             typer.echo("🔒 Read-only mode - write operations disabled")
 
     try:
-        # Try the simple server first
-        asyncio.run(server_main_simple(enable_write_tools=enable_write_tools))
+        # Use the FastMCP server implementation
+        asyncio.run(server_main(enable_write_tools=enable_write_tools))
     except KeyboardInterrupt:
         typer.echo("\\nServer stopped by user")
     except Exception as e:
