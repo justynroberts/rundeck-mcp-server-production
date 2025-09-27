@@ -18,7 +18,7 @@ from mcp.types import (
 
 from .client import get_client_manager
 from .tools import read_tools, write_tools
-from .utils import get_tool_description, load_tool_prompts, generate_input_schema
+from .utils import get_tool_description, load_tool_prompts
 
 logger = logging.getLogger(__name__)
 
@@ -37,12 +37,15 @@ def create_server(enable_write_tools: bool = False) -> Server:
         for tool_func in read_tools:
             tool_name = tool_func.__name__
             description = get_tool_description(tool_name, tool_prompts)
-            input_schema = generate_input_schema(tool_func)
             tools.append(
                 Tool(
                     name=tool_name,
                     description=description,
-                    inputSchema=input_schema,
+                    inputSchema={
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    },
                     annotations=ToolAnnotations(readOnlyHint=True, destructiveHint=False, idempotentHint=True),
                 )
             )
@@ -52,7 +55,6 @@ def create_server(enable_write_tools: bool = False) -> Server:
             for tool_func in write_tools:
                 tool_name = tool_func.__name__
                 description = get_tool_description(tool_name, tool_prompts)
-                input_schema = generate_input_schema(tool_func)
 
                 # Determine if tool is destructive
                 destructive_tools = [
@@ -69,7 +71,11 @@ def create_server(enable_write_tools: bool = False) -> Server:
                     Tool(
                         name=tool_name,
                         description=description,
-                        inputSchema=input_schema,
+                        inputSchema={
+                            "type": "object",
+                            "properties": {},
+                            "required": []
+                        },
                         annotations=ToolAnnotations(
                             readOnlyHint=False,
                             destructiveHint=is_destructive,
