@@ -35,8 +35,22 @@ def get_nodes(
 
     response = client._make_request("GET", f"project/{project}/resources", params=params)
 
+    # Handle different response formats
+    # Rundeck resources API can return dict or list depending on version/config
+    if isinstance(response, dict):
+        # Response is a dict with node names as keys
+        node_list = list(response.values())
+    elif isinstance(response, list):
+        # Response is already a list
+        node_list = response
+    elif isinstance(response, str):
+        # Response is a string (error or unexpected format)
+        raise ValueError(f"Unexpected response format from Rundeck API: {response[:100]}")
+    else:
+        node_list = []
+
     nodes = []
-    for node_data in response:
+    for node_data in node_list:
         nodes.append(
             Node(
                 name=node_data["nodename"],
@@ -163,10 +177,14 @@ def suggest_node_filters(
             if (search_lower in node.name.lower() or
                 search_lower in node.hostname.lower() or
                 search_lower in (node.os_name or "").lower()):
+                # Get osFamily from attributes if available
+                os_family = node.attributes.get("osFamily", "")
+                os_display = f"{node.os_name} ({os_family})" if os_family else node.os_name or "Unknown"
+
                 matching.append({
                     "name": node.name,
                     "hostname": node.hostname,
-                    "os": f"{node.os_name} ({node.os_family})",
+                    "os": os_display,
                     "exact_filter": f"name: {node.name}",
                     "hostname_filter": f"hostname: {node.hostname}",
                     "regex_filter": f".*{node.name.split('-')[0]}.*" if '-' in node.name else f".*{node.name[:5]}.*"
@@ -185,8 +203,9 @@ def suggest_node_filters(
         ]
 
         # By OS examples
-        os_families = list(set(n.os_family for n in nodes if n.os_family))
-        suggestions["filter_examples"]["by_os_family"] = [f"osFamily: {os}" for os in os_families[:3]]
+        os_families = list(set(n.attributes.get("osFamily", "") for n in nodes if n.attributes.get("osFamily")))
+        if os_families:
+            suggestions["filter_examples"]["by_os_family"] = [f"osFamily: {os}" for os in os_families[:3]]
 
         # By hostname examples (if different from name)
         hostname_examples = [f"hostname: {n.hostname}" for n in nodes[:2] if n.hostname != n.name]
