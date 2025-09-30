@@ -542,12 +542,27 @@ def _extract_variables_from_command(command: str) -> list[str]:
 
 
 def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
-    """Break a command into logical script steps."""
+    """Break a command into logical script steps.
+
+    Returns steps with proper structure:
+    - Single line commands use 'exec' field
+    - Multi-line scripts or commands with shebangs use 'script' field
+    """
     lines = [line.strip() for line in command.split("\n") if line.strip()]
 
-    if len(lines) <= 1:
-        # Single line command - return as single step
+    # Check if this is a script (has shebang or multiple lines)
+    is_script = command.strip().startswith("#!") or len(lines) > 1
+
+    if len(lines) <= 1 and not is_script:
+        # Single line command - return as exec step
         return [{"exec": command, "description": f"Execute {name}"}]
+
+    # For scripts with shebang, keep as single script step
+    if command.strip().startswith("#!"):
+        return [{
+            "script": command,
+            "description": name
+        }]
 
     steps = []
     current_step_lines = []
@@ -576,9 +591,11 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
             )
         ) and current_step_lines:
             step_command = "\n".join(current_step_lines)
+            # Use 'script' for multi-line, 'exec' for single line
+            step_field = "script" if len(current_step_lines) > 1 else "exec"
             steps.append(
                 {
-                    "exec": step_command,
+                    step_field: step_command,
                     "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
                 }
             )
@@ -590,9 +607,11 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
     # Add final step
     if current_step_lines:
         step_command = "\n".join(current_step_lines)
+        # Use 'script' for multi-line, 'exec' for single line
+        step_field = "script" if len(current_step_lines) > 1 else "exec"
         steps.append(
             {
-                "exec": step_command,
+                step_field: step_command,
                 "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
             }
         )
@@ -803,15 +822,52 @@ def create_job(
 
             # Substitute variables in steps
             for step in steps:
-                step["exec"] = _substitute_variables_in_command(step["exec"], variables)
+                if "exec" in step:
+                    step["exec"] = _substitute_variables_in_command(step["exec"], variables)
+                elif "script" in step:
+                    step["script"] = _substitute_variables_in_command(step["script"], variables)
 
         # Set to run locally if no node filter specified
         if not node_filter:
-            node_filter = {"dispatch": {"threadcount": "1"}, "filter": "name: localhost"}
+            node_filter = {
+                "dispatch": {
+                    "excludePrecedence": True,
+                    "keepgoing": False,
+                    "rankOrder": "ascending",
+                    "successOnEmptyNodeFilter": False,
+                    "threadcount": "1"
+                },
+                "filter": "name: localhost"
+            }
     else:
-        # Simple single-step job
-        steps = [{"exec": command, "description": f"Execute {name}"}]
+        # Simple single-step job - detect if script or command
+        if command.strip().startswith("#!"):
+            steps = [{"script": command, "description": f"Execute {name}"}]
+        else:
+            steps = [{"exec": command, "description": f"Execute {name}"}]
         enhanced_description = description
+
+    # Normalize node_filter if it's a string (convert to proper structure)
+    if isinstance(node_filter, str):
+        node_filter = {
+            "dispatch": {
+                "excludePrecedence": True,
+                "keepgoing": False,
+                "rankOrder": "ascending",
+                "successOnEmptyNodeFilter": False,
+                "threadcount": "1"
+            },
+            "filter": node_filter
+        }
+    elif isinstance(node_filter, dict) and "filter" in node_filter and "dispatch" not in node_filter:
+        # Has filter but missing dispatch - add default dispatch
+        node_filter["dispatch"] = {
+            "excludePrecedence": True,
+            "keepgoing": False,
+            "rankOrder": "ascending",
+            "successOnEmptyNodeFilter": False,
+            "threadcount": "1"
+        }
 
     # Build the job definition in YAML format
     job_def = {
@@ -823,6 +879,9 @@ def create_job(
         "multipleExecutions": multiple_executions,
         "executionEnabled": execution_enabled,
         "scheduleEnabled": schedule_enabled,
+        "defaultTab": "nodes",
+        "nodeFilterEditable": False,
+        "nodesSelectedByDefault": True,
         "sequence": {"keepgoing": False, "strategy": "node-first", "commands": steps},
     }
 
@@ -832,9 +891,11 @@ def create_job(
 
     if schedule:
         if "cron" in schedule:
-            job_def["schedule"] = {"crontab": schedule["cron"]}
+            job_def["schedule"] = {"time": schedule}
+            job_def["schedules"] = []
         else:
             job_def["schedule"] = schedule
+            job_def["schedules"] = []
 
     if node_filter:
         job_def["nodefilters"] = node_filter
