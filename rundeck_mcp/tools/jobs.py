@@ -948,9 +948,8 @@ def create_job(
         # Break command into logical steps
         steps = _break_command_into_steps(command, name)
 
-        # Generate markdown documentation
-        markdown_doc = _generate_markdown_documentation(name, description, variables, steps)
-        enhanced_description = f"{description}\n\n{markdown_doc}" if description else markdown_doc
+        # Keep description brief - don't add code/markdown to description field
+        enhanced_description = description
     elif command:
         # Simple job without enhancement
         if command.strip().startswith("#!"):
