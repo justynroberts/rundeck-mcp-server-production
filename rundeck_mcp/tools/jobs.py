@@ -911,7 +911,8 @@ def create_job(
                     formatted_opt["type"] = "select"
                 options.append(formatted_opt)
 
-            # Substitute variables in steps
+        # Substitute variables in steps (do this regardless of whether options were auto-generated)
+        if variables:
             for step in steps:
                 if "exec" in step:
                     step["exec"] = _substitute_variables_in_command(step["exec"], variables)
