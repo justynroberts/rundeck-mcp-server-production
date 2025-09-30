@@ -826,6 +826,12 @@ def create_job(
                     formatted_opt["value"] = opt["value"]
                 if "defaultValue" in opt:
                     formatted_opt["defaultValue"] = opt["defaultValue"]
+                if "default" in opt:
+                    # Handle "default" field (map to "value" for Rundeck)
+                    formatted_opt["value"] = opt["default"]
+                if "label" in opt:
+                    # Use label if provided
+                    formatted_opt["label"] = opt["label"]
                 if "secure" in opt:
                     formatted_opt["secure"] = opt["secure"]
                     formatted_opt["storagePath"] = opt.get("storagePath", "")
@@ -854,6 +860,12 @@ def create_job(
                 formatted_opt["value"] = opt_config["value"]
             if "defaultValue" in opt_config:
                 formatted_opt["defaultValue"] = opt_config["defaultValue"]
+            if "default" in opt_config:
+                # Handle "default" field (map to "value" for Rundeck)
+                formatted_opt["value"] = opt_config["default"]
+            if "label" in opt_config:
+                # Use label if provided, otherwise use description
+                formatted_opt["label"] = opt_config["label"]
             if "secure" in opt_config:
                 formatted_opt["secure"] = opt_config["secure"]
                 formatted_opt["storagePath"] = opt_config.get("storagePath", "")
