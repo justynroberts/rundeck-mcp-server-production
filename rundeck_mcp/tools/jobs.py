@@ -843,6 +843,26 @@ def create_job(
     if isinstance(workflow, dict) and "steps" in workflow:
         workflow = workflow["steps"]
 
+    # Decode escaped strings in workflow steps (handle \n, \t, etc.)
+    if workflow and isinstance(workflow, list):
+        for step in workflow:
+            if isinstance(step, dict):
+                # Decode script field if present
+                if "script" in step and isinstance(step["script"], str):
+                    # Use encode/decode to properly handle escape sequences
+                    try:
+                        step["script"] = step["script"].encode().decode('unicode_escape')
+                    except Exception:
+                        # If decoding fails, leave as-is
+                        pass
+                # Decode exec field if present
+                if "exec" in step and isinstance(step["exec"], str):
+                    try:
+                        step["exec"] = step["exec"].encode().decode('unicode_escape')
+                    except Exception:
+                        # If decoding fails, leave as-is
+                        pass
+
     # Convert list-style options to Rundeck format
     # Rundeck expects options as a list of dicts with specific keys
     if isinstance(options, list):
