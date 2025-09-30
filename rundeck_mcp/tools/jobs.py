@@ -800,6 +800,72 @@ def create_job(
     """
     client = get_client(server)
 
+    # Parse options if provided as JSON string
+    if isinstance(options, str):
+        try:
+            options = json.loads(options)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Invalid options JSON string: {e}")
+
+    # Convert list-style options to Rundeck format
+    # Rundeck expects options as a list of dicts with specific keys
+    if isinstance(options, list):
+        # Options are already in list format, ensure proper structure
+        formatted_options = []
+        for opt in options:
+            if isinstance(opt, dict) and "name" in opt:
+                # Ensure required fields and normalize field names
+                formatted_opt = {
+                    "name": opt["name"],
+                    "description": opt.get("description", ""),
+                    "required": opt.get("required", False),
+                }
+
+                # Add optional fields if present
+                if "value" in opt:
+                    formatted_opt["value"] = opt["value"]
+                if "defaultValue" in opt:
+                    formatted_opt["defaultValue"] = opt["defaultValue"]
+                if "secure" in opt:
+                    formatted_opt["secure"] = opt["secure"]
+                    formatted_opt["storagePath"] = opt.get("storagePath", "")
+                    formatted_opt["valueExposed"] = opt.get("valueExposed", False)
+                if "type" in opt:
+                    formatted_opt["type"] = opt["type"]
+                if "values" in opt:
+                    formatted_opt["values"] = opt["values"]
+
+                formatted_options.append(formatted_opt)
+            else:
+                raise ValueError(f"Invalid option format: {opt}")
+        options = formatted_options
+    elif isinstance(options, dict):
+        # Convert dict format to list format for Rundeck
+        formatted_options = []
+        for opt_name, opt_config in options.items():
+            formatted_opt = {
+                "name": opt_name,
+                "description": opt_config.get("description", ""),
+                "required": opt_config.get("required", False),
+            }
+
+            # Add optional fields
+            if "value" in opt_config:
+                formatted_opt["value"] = opt_config["value"]
+            if "defaultValue" in opt_config:
+                formatted_opt["defaultValue"] = opt_config["defaultValue"]
+            if "secure" in opt_config:
+                formatted_opt["secure"] = opt_config["secure"]
+                formatted_opt["storagePath"] = opt_config.get("storagePath", "")
+                formatted_opt["valueExposed"] = opt_config.get("valueExposed", False)
+            if "type" in opt_config:
+                formatted_opt["type"] = opt_config["type"]
+            if "values" in opt_config:
+                formatted_opt["values"] = opt_config["values"]
+
+            formatted_options.append(formatted_opt)
+        options = formatted_options
+
     # Enhanced job processing
     if enhance_job:
         # Extract variables from command
@@ -813,12 +879,25 @@ def create_job(
         enhanced_description = f"{description}\n\n{markdown_doc}" if description else markdown_doc
 
         # Create job options from variables
-        if variables:
-            extracted_options = _create_job_options_from_variables(variables)
-            # Merge with user-provided options
-            if options:
-                extracted_options.update(options)
-            options = extracted_options
+        if variables and not options:
+            # Only auto-generate options if none were provided
+            extracted_options_dict = _create_job_options_from_variables(variables)
+            # Convert to list format
+            options = []
+            for opt_name, opt_config in extracted_options_dict.items():
+                formatted_opt = {
+                    "name": opt_name,
+                    "description": opt_config.get("description", ""),
+                    "required": opt_config.get("required", False),
+                }
+                if "defaultValue" in opt_config:
+                    formatted_opt["value"] = opt_config["defaultValue"]
+                if "secure" in opt_config:
+                    formatted_opt["secure"] = opt_config["secure"]
+                if "values" in opt_config:
+                    formatted_opt["values"] = opt_config["values"]
+                    formatted_opt["type"] = "select"
+                options.append(formatted_opt)
 
             # Substitute variables in steps
             for step in steps:
