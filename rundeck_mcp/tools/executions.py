@@ -21,15 +21,29 @@ def get_execution_status(execution_id: str, server: str | None = None) -> Execut
     client = get_client(server)
     response = client._make_request("GET", f"execution/{execution_id}")
 
+    # Parse start time
+    start_time = None
+    if response.get("date-started"):
+        date_started = response["date-started"]
+        if isinstance(date_started, str):
+            start_time = datetime.fromisoformat(date_started.replace("Z", "+00:00"))
+        elif isinstance(date_started, dict) and "date" in date_started:
+            start_time = datetime.fromisoformat(date_started["date"].replace("Z", "+00:00"))
+
+    # Parse end time
+    end_time = None
+    if response.get("date-ended"):
+        date_ended = response["date-ended"]
+        if isinstance(date_ended, str):
+            end_time = datetime.fromisoformat(date_ended.replace("Z", "+00:00"))
+        elif isinstance(date_ended, dict) and "date" in date_ended:
+            end_time = datetime.fromisoformat(date_ended["date"].replace("Z", "+00:00"))
+
     return ExecutionStatus(
         id=response["id"],
         status=response["status"],
-        start_time=datetime.fromisoformat(response["date-started"].replace("Z", "+00:00"))
-        if response.get("date-started")
-        else None,
-        end_time=datetime.fromisoformat(response["date-ended"].replace("Z", "+00:00"))
-        if response.get("date-ended")
-        else None,
+        start_time=start_time,
+        end_time=end_time,
         duration=response.get("duration"),
     )
 
@@ -78,18 +92,32 @@ def get_executions(
 
     executions = []
     for exec_data in response.get("executions", []):
+        # Parse start time
+        start_time = None
+        if exec_data.get("date-started"):
+            date_started = exec_data["date-started"]
+            if isinstance(date_started, str):
+                start_time = datetime.fromisoformat(date_started.replace("Z", "+00:00"))
+            elif isinstance(date_started, dict) and "date" in date_started:
+                start_time = datetime.fromisoformat(date_started["date"].replace("Z", "+00:00"))
+
+        # Parse end time
+        end_time = None
+        if exec_data.get("date-ended"):
+            date_ended = exec_data["date-ended"]
+            if isinstance(date_ended, str):
+                end_time = datetime.fromisoformat(date_ended.replace("Z", "+00:00"))
+            elif isinstance(date_ended, dict) and "date" in date_ended:
+                end_time = datetime.fromisoformat(date_ended["date"].replace("Z", "+00:00"))
+
         executions.append(
             JobExecution(
                 id=exec_data["id"],
                 job_id=exec_data.get("job", {}).get("id", ""),
                 project=exec_data["project"],
                 status=exec_data["status"],
-                start_time=datetime.fromisoformat(exec_data["date-started"].replace("Z", "+00:00"))
-                if exec_data.get("date-started")
-                else None,
-                end_time=datetime.fromisoformat(exec_data["date-ended"].replace("Z", "+00:00"))
-                if exec_data.get("date-ended")
-                else None,
+                start_time=start_time,
+                end_time=end_time,
                 duration=exec_data.get("duration"),
                 user=exec_data.get("user"),
             )
