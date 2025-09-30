@@ -691,10 +691,23 @@ def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
 
     Rules:
     - ALWAYS use @option.variablename@ format for any script type
+    - Handles both ${VAR} and ${option.VAR} patterns
     """
     modified_command = command
 
+    # First, handle cases where user already wrote ${option.VARNAME}
+    # Convert ${option.varname} to @option.varname@
+    modified_command = re.sub(r"\$\{option\.([A-Za-z0-9_]+)\}", r"@option.\1@", modified_command, flags=re.IGNORECASE)
+
+    # Also handle $option.varname (without braces)
+    modified_command = re.sub(r"\$option\.([A-Za-z0-9_]+)", r"@option.\1@", modified_command, flags=re.IGNORECASE)
+
+    # Then handle extracted variables (${VAR} or $VAR patterns)
     for var in variables:
+        # Skip if this is already "option" (from ${option.varname} patterns)
+        if var.lower() == "option":
+            continue
+
         # Always use @option.VAR@ format for all scripts and commands
         modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
         modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
