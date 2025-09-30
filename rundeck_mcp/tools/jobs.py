@@ -832,6 +832,17 @@ def create_job(
         except (json.JSONDecodeError, ValueError) as e:
             raise ValueError(f"Invalid options JSON string: {e}")
 
+    # Parse workflow if provided as JSON string
+    if isinstance(workflow, str):
+        try:
+            workflow = json.loads(workflow)
+        except (json.JSONDecodeError, ValueError) as e:
+            raise ValueError(f"Invalid workflow JSON string: {e}")
+
+    # Extract steps from workflow if it's a dict with 'steps' key
+    if isinstance(workflow, dict) and "steps" in workflow:
+        workflow = workflow["steps"]
+
     # Convert list-style options to Rundeck format
     # Rundeck expects options as a list of dicts with specific keys
     if isinstance(options, list):
