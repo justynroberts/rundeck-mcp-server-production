@@ -721,11 +721,15 @@ def _generate_markdown_documentation(name: str, description: str, variables: lis
         for i, step in enumerate(steps, 1):
             doc += f"{i}. **{step['description']}**\n"
             doc += "   ```bash\n"
-            doc += f"   {step['exec']}\n"
+            # Handle both exec and script fields
+            command_text = step.get('exec') or step.get('script', '')
+            doc += f"   {command_text}\n"
             doc += "   ```\n\n"
     else:
         doc += "## Execution\n\n"
-        doc += f"```bash\n{steps[0]['exec']}\n```\n\n"
+        # Handle both exec and script fields
+        command_text = steps[0].get('exec') or steps[0].get('script', '')
+        doc += f"```bash\n{command_text}\n```\n\n"
 
     doc += "## Notes\n\n"
     doc += "- Job runs locally if no target nodes specified\n"
