@@ -757,12 +757,13 @@ def _generate_markdown_documentation(name: str, description: str, variables: lis
 def create_job(
     project: str,
     name: str,
-    command: str,
+    command: str = "",
     description: str = "",
     group: str | None = None,
     options: dict[str, Any] | list[dict[str, Any]] | str | None = None,
     schedule: dict[str, Any] | None = None,
     node_filter: dict[str, Any] | str | None = None,
+    workflow: list[dict[str, Any]] | None = None,
     timeout: str | None = None,
     retry_count: int | None = None,
     execution_enabled: bool = True,
@@ -778,12 +779,13 @@ def create_job(
     Args:
         project: Project name where job will be created
         name: Job name
-        command: Command to execute
+        command: Command to execute (optional if workflow provided)
         description: Job description (optional)
         group: Job group name (optional)
         options: Job input options (optional)
         schedule: Schedule configuration (optional, e.g., {"cron": "0 0 * * *"})
         node_filter: Node targeting configuration (optional)
+        workflow: Custom workflow steps (optional, overrides command if provided)
         timeout: Maximum runtime (optional, e.g., "30m")
         retry_count: Number of retry attempts (optional)
         execution_enabled: Whether job execution is enabled
@@ -797,7 +799,13 @@ def create_job(
     Returns:
         Job creation response
 
-    Enhancement Features (when enhance_job=True):
+    Workflow Steps:
+        If workflow parameter is provided, it should be a list of step dictionaries:
+        - Command steps: {"exec": "command", "description": "..."}
+        - Script steps: {"script": "#!/bin/bash\\n...", "description": "..."}
+        - Job refs: {"jobref": {"name": "...", "project": "..."}, "description": "..."}
+
+    Enhancement Features (when enhance_job=True and command provided):
         - Breaks commands into logical script steps
         - Generates markdown documentation
         - Extracts variables and creates job options automatically
@@ -895,8 +903,14 @@ def create_job(
             formatted_options.append(formatted_opt)
         options = formatted_options
 
-    # Enhanced job processing
-    if enhance_job:
+    # Use custom workflow if provided, otherwise process command
+    if workflow:
+        # User provided custom workflow steps
+        steps = workflow
+        enhanced_description = description
+        variables = []  # Don't auto-extract variables from workflow
+    elif enhance_job and command:
+        # Enhanced job processing from command
         # Extract variables from command
         variables = _extract_variables_from_command(command)
 
@@ -906,55 +920,58 @@ def create_job(
         # Generate markdown documentation
         markdown_doc = _generate_markdown_documentation(name, description, variables, steps)
         enhanced_description = f"{description}\n\n{markdown_doc}" if description else markdown_doc
-
-        # Create job options from variables
-        if variables and not options:
-            # Only auto-generate options if none were provided
-            extracted_options_dict = _create_job_options_from_variables(variables)
-            # Convert to list format
-            options = []
-            for opt_name, opt_config in extracted_options_dict.items():
-                formatted_opt = {
-                    "name": opt_name,
-                    "description": opt_config.get("description", ""),
-                    "required": opt_config.get("required", False),
-                }
-                if "defaultValue" in opt_config:
-                    formatted_opt["value"] = opt_config["defaultValue"]
-                if "secure" in opt_config:
-                    formatted_opt["secure"] = opt_config["secure"]
-                if "values" in opt_config:
-                    formatted_opt["values"] = opt_config["values"]
-                    formatted_opt["type"] = "select"
-                options.append(formatted_opt)
-
-        # Substitute variables in steps (do this regardless of whether options were auto-generated)
-        if variables:
-            for step in steps:
-                if "exec" in step:
-                    step["exec"] = _substitute_variables_in_command(step["exec"], variables)
-                elif "script" in step:
-                    step["script"] = _substitute_variables_in_command(step["script"], variables)
-
-        # Set to run locally if no node filter specified
-        if not node_filter:
-            node_filter = {
-                "dispatch": {
-                    "excludePrecedence": True,
-                    "keepgoing": False,
-                    "rankOrder": "ascending",
-                    "successOnEmptyNodeFilter": False,
-                    "threadcount": "1"
-                },
-                "filter": "name: localhost"
-            }
-    else:
-        # Simple single-step job - detect if script or command
+    elif command:
+        # Simple job without enhancement
         if command.strip().startswith("#!"):
             steps = [{"script": command, "description": f"Execute {name}"}]
         else:
             steps = [{"exec": command, "description": f"Execute {name}"}]
         enhanced_description = description
+        variables = []
+    else:
+        raise ValueError("Either 'command' or 'workflow' parameter must be provided")
+
+    # Create job options from variables
+    if variables and not options:
+        # Only auto-generate options if none were provided
+        extracted_options_dict = _create_job_options_from_variables(variables)
+        # Convert to list format
+        options = []
+        for opt_name, opt_config in extracted_options_dict.items():
+            formatted_opt = {
+                "name": opt_name,
+                "description": opt_config.get("description", ""),
+                "required": opt_config.get("required", False),
+            }
+            if "defaultValue" in opt_config:
+                formatted_opt["value"] = opt_config["defaultValue"]
+            if "secure" in opt_config:
+                formatted_opt["secure"] = opt_config["secure"]
+            if "values" in opt_config:
+                formatted_opt["values"] = opt_config["values"]
+                formatted_opt["type"] = "select"
+            options.append(formatted_opt)
+
+    # Substitute variables in steps (do this regardless of whether options were auto-generated)
+    if variables:
+        for step in steps:
+            if "exec" in step:
+                step["exec"] = _substitute_variables_in_command(step["exec"], variables)
+            elif "script" in step:
+                step["script"] = _substitute_variables_in_command(step["script"], variables)
+
+    # Set to run locally if no node filter specified
+    if not node_filter:
+        node_filter = {
+            "dispatch": {
+                "excludePrecedence": True,
+                "keepgoing": False,
+                "rankOrder": "ascending",
+                "successOnEmptyNodeFilter": False,
+                "threadcount": "1"
+            },
+            "filter": "name: localhost"
+        }
 
     # Normalize node_filter if it's a string (convert to proper structure)
     if isinstance(node_filter, str):
