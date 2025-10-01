@@ -158,12 +158,42 @@ Use script steps for:
 
 ### When to Split Into Multiple Steps:
 
-Split your workflow when you have:
-- **Different logical phases** (setup → execute → cleanup)
-- **Different technologies** (bash script → SQL query → REST API call)
-- **Natural breakpoints** (comments, echo separators, major operation changes)
-- **Error handling opportunities** (check status after critical operations)
-- **Long scripts** (>20 lines should usually be multiple steps)
+**CRITICAL: Look for these clear indicators to split:**
+
+1. **Echo separators with equals signs or dashes**
+   ```bash
+   echo "======================================"
+   echo "STAGE 1: Database Setup"
+   ```
+   → This is a NEW STEP!
+
+2. **Numbered stages or phases**
+   ```bash
+   # Stage 1: Install dependencies
+   # Stage 2: Configure services
+   # Stage 3: Deploy application
+   ```
+   → Each stage = separate step!
+
+3. **Major section comments**
+   ```bash
+   # ── Core Infrastructure ──
+   # ── Security Stack ──
+   # ── Observability ──
+   ```
+   → Each section = separate step!
+
+4. **Different technologies/operations**
+   - Installing different components (Prometheus, then Grafana, then Loki)
+   - Database operations then API calls
+   - File operations then service restarts
+
+5. **Natural failure points**
+   - After each install/deploy
+   - After validation checks
+   - Before/after critical operations
+
+6. **Long scripts** (>50 lines MUST be split, >20 lines should consider splitting)
 
 ### Example - Multi-Step Workflow:
 

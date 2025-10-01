@@ -566,32 +566,37 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
     current_step_lines = []
     step_counter = 1
 
-    # Keywords that indicate a new logical step
-    step_keywords = [
-        "check", "verify", "validate", "test",
-        "install", "download", "fetch", "clone",
-        "setup", "configure", "initialize", "prepare",
-        "start", "stop", "restart", "reload",
-        "deploy", "build", "compile", "package",
-        "backup", "restore", "archive", "snapshot",
-        "cleanup", "clean", "remove", "delete",
-        "update", "upgrade", "patch", "migrate",
-        "monitor", "health", "status", "diagnostic"
-    ]
-
+    # Patterns that STRONGLY indicate a new step
     for line in lines:
         # Detect step boundaries
         is_new_step = False
 
         if current_step_lines:  # Only split if we have accumulated lines
-            # Comment-based separation
-            if line.startswith("#") and not line.startswith("#!/"):
+            # CRITICAL: Echo separators with === or ━━━ or ---
+            if (line.startswith('echo "=') or line.startswith("echo '=") or
+                line.startswith('echo "━') or line.startswith("echo '━") or
+                line.startswith('echo "-') or line.startswith("echo '-")):
                 is_new_step = True
-            # Echo separators
-            elif line.startswith('echo "=') or line.startswith("echo '="):
+
+            # CRITICAL: Stage/Phase markers
+            elif ("stage" in line.lower() or "phase" in line.lower() or
+                  "step" in line.lower()) and line.startswith("#"):
                 is_new_step = True
-            # Keyword-based detection
-            elif any(keyword in line.lower() for keyword in step_keywords):
+
+            # Major section comments (visual separators)
+            elif line.startswith("# ──") or line.startswith("# ==") or line.startswith("# --"):
+                is_new_step = True
+
+            # Numbered markers in comments
+            elif line.startswith("#") and any(f"({i}/" in line or f"{i}/" in line or f"STAGE {i}" in line.upper()
+                                              for i in range(1, 50)):
+                is_new_step = True
+
+            # Major operation keywords at start of line
+            elif any(line.lower().startswith(f"echo \"{keyword}") or
+                    line.lower().startswith(f"echo '{keyword}") or
+                    line.lower().startswith(keyword)
+                    for keyword in ["installing", "deploying", "configuring", "validating", "starting", "stopping"]):
                 is_new_step = True
 
         if is_new_step:
