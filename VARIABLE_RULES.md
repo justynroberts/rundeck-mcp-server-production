@@ -270,13 +270,116 @@ sequence:
       curl http://localhost:8080/health
 ```
 
-### Use Different Step Types:
+### Use Different Step Types - NOT Just Scripts!
 
-Don't just use script steps - leverage the right tool for each task:
+**CRITICAL: Match the step type to the operation!**
 
-- **Script steps** - Shell commands, system operations
-- **SQL steps** - Database queries, logging, data updates
-- **Ansible steps** - Configuration management, multi-node orchestration
-- **Job references** - Call other jobs, chain workflows
-- **HTTP steps** - REST API calls, webhooks
-- **Progress badges** - Visual status indicators
+#### When to Use Each Plugin Type:
+
+**1. SQL Runner Plugin** - Use when you see:
+- SQL queries (`SELECT`, `INSERT`, `UPDATE`, `DELETE`)
+- Database operations (`CREATE TABLE`, `ALTER`, `DROP`)
+- Embedded SQL in heredocs (`sqlplus <<EOF`, `mysql -e "..."`)
+- Database logging/auditing
+- **DON'T**: Embed SQL in bash scripts!
+
+**2. Ansible Plugin** - Use when you see:
+- Package installation (`apt install`, `yum install`)
+- Service management (`systemctl start/stop/restart`)
+- File/directory management at scale
+- Configuration file templating
+- Multi-node coordination
+- **DON'T**: Write bash loops to configure multiple servers!
+
+**3. HTTP/REST Plugin** - Use when you see:
+- `curl` or `wget` commands to APIs
+- REST API calls (GET, POST, PUT, DELETE)
+- Webhook notifications
+- API integrations
+- **DON'T**: Use bash curl in scripts for API calls!
+
+**4. Job Reference** - Use when you see:
+- Calling existing automation
+- Workflow orchestration
+- Reusing common tasks
+- Sequential job chains
+- **DON'T**: Copy/paste code from other jobs!
+
+**5. Script Steps** - Use ONLY for:
+- System commands without better alternatives
+- Complex shell logic
+- File processing
+- Local operations
+
+#### Examples of Plugin Detection:
+
+**BAD - SQL in bash script:**
+```yaml
+- script: |
+    #!/bin/bash
+    mysql -u root <<EOF
+    INSERT INTO deployments VALUES ('app', NOW());
+    UPDATE status SET deployed=1;
+    EOF
+```
+
+**GOOD - SQL Runner plugin:**
+```yaml
+- type: org.rundeck.sqlrunner.SQLRunnerNodeStepPlugin
+  nodeStep: true
+  configuration:
+    jdbcUrl: jdbc:mysql://localhost/mydb
+    user: ${option.db_user}
+    scriptBody: |
+      INSERT INTO deployments VALUES ('${option.app_name}', NOW());
+      UPDATE status SET deployed=1 WHERE app='${option.app_name}';
+```
+
+**BAD - Package install in bash:**
+```yaml
+- script: |
+    #!/bin/bash
+    apt-get update
+    apt-get install -y nginx
+    systemctl start nginx
+```
+
+**GOOD - Ansible plugin:**
+```yaml
+- type: com.batix.rundeck.plugins.AnsiblePlaybookInlineWorkflowNodeStep
+  nodeStep: true
+  configuration:
+    ansible-playbook: |
+      ---
+      - hosts: all
+        tasks:
+          - name: Install nginx
+            apt:
+              name: nginx
+              state: present
+              update_cache: yes
+          - name: Start nginx
+            service:
+              name: nginx
+              state: started
+```
+
+**BAD - API call in bash:**
+```yaml
+- script: |
+    #!/bin/bash
+    curl -X POST https://api.example.com/deploy \
+      -H "Content-Type: application/json" \
+      -d '{"app":"myapp","version":"1.0"}'
+```
+
+**GOOD - HTTP plugin:**
+```yaml
+- type: edu.ohio.ais.rundeck.HttpWorkflowStepPlugin
+  nodeStep: false
+  configuration:
+    method: POST
+    url: https://api.example.com/deploy
+    headers: "Content-Type: application/json"
+    body: '{"app":"${option.app_name}","version":"${option.version}"}'
+```
