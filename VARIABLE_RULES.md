@@ -1,5 +1,49 @@
 # Rundeck Variable Substitution Rules
 
+## When to Use Script vs Exec Steps
+
+### Use SCRIPT Steps For:
+- **Multi-line scripts** (anything with more than one command)
+- **Complex logic** (if statements, loops, functions)
+- **Scripts with shebangs** (`#!/bin/bash`, `#!/usr/bin/env python3`)
+- **Heredocs** (`cat <<EOF`, `sqlplus <<EOF`)
+- **Scripts requiring interpreters** (PowerShell, Python, Ruby)
+- **Error handling** (set -e, trap commands)
+- **Variable assignments** and **command substitution**
+
+### Use EXEC Steps For:
+- **Single simple commands only** (e.g., `echo "Hello"`, `ls -la`, `df -h`)
+- **One-liner commands** without complex logic
+- **Direct command execution** without shell features
+
+### Examples:
+
+**WRONG - Complex script in exec:**
+```yaml
+- exec: |
+    echo "Dropping schema ${option.schema_name}..."
+    sqlplus -s ${option.admin_user}/${option.admin_password}@${option.oracle_sid} <<EOF
+    DROP USER ${option.schema_name} CASCADE;
+    EOF
+```
+
+**CORRECT - Complex script in script:**
+```yaml
+- script: |
+    #!/bin/bash
+    echo "Dropping schema @option.schema_name@..."
+    sqlplus -s @option.admin_user@/@option.admin_password@@@option.oracle_sid@ <<EOF
+    DROP USER @option.schema_name@ CASCADE;
+    EOF
+  description: Drop Oracle schema
+```
+
+**CORRECT - Simple command in exec:**
+```yaml
+- exec: echo "Environment is ${option.environment}"
+  description: Show environment
+```
+
 ## CRITICAL RULES
 
 ### Script Steps (script field)

@@ -803,8 +803,15 @@ def build_job(
     - Use job_import() with complete YAML/JSON definition
 
     Step Types Created:
-    - exec: Single-line commands (e.g., "df -h")
-    - script: Multi-line scripts or scripts with shebang
+    - exec: Single simple commands ONLY (e.g., "df -h", "echo test", "ls -la")
+    - script: ANYTHING complex - multi-line, heredocs, if/loops, functions, shebangs
+
+    CRITICAL: Use script (not exec) for:
+    - Multi-line scripts
+    - Heredocs (<<EOF)
+    - Complex logic (if/for/while)
+    - Variable assignments
+    - Command substitution
 
     Args:
         project: Project name
