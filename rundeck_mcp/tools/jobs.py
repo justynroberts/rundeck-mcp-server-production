@@ -763,7 +763,7 @@ def create_job(
     options: dict[str, Any] | list[dict[str, Any]] | str | None = None,
     schedule: dict[str, Any] | None = None,
     node_filter: dict[str, Any] | str | None = None,
-    workflow: list[dict[str, Any]] | None = None,
+    workflow: list[dict[str, Any]] | str | None = None,
     timeout: str | None = None,
     retry_count: int | None = None,
     execution_enabled: bool = True,
@@ -771,99 +771,49 @@ def create_job(
     multiple_executions: bool = False,
     log_level: str = "INFO",
     dupe_option: str = "create",
-    enhance_job: bool = True,
     server: str | None = None,
 ) -> dict[str, Any]:
-    """Create a new Rundeck job.
+    """Create a basic Rundeck job without complex enhancement rules.
 
     Args:
-        project: Project name where job will be created
+        project: Project name
         name: Job name
-        command: Command to execute (optional if workflow provided)
-        description: Job description (optional)
-        group: Job group name (optional)
-        options: Job input options (optional)
-        schedule: Schedule configuration (optional, e.g., {"cron": "0 0 * * *"})
-        node_filter: Node targeting configuration (optional)
-        workflow: Custom workflow steps (optional, overrides command if provided)
-        timeout: Maximum runtime (optional, e.g., "30m")
-        retry_count: Number of retry attempts (optional)
-        execution_enabled: Whether job execution is enabled
-        schedule_enabled: Whether job schedule is enabled
-        multiple_executions: Allow concurrent executions
-        log_level: Logging level (DEBUG, VERBOSE, INFO, WARN, ERROR)
-        dupe_option: Behavior for duplicate jobs (create, update, skip)
-        enhance_job: Enable job enhancement features (default: True)
-        server: Server name/alias to use (e.g., "demo"), not the project name
+        command: Single command or script to execute
+        description: Brief job description
+        group: Job group (optional)
+        options: Job options as dict or list (optional)
+        schedule: Schedule config (optional)
+        node_filter: Node targeting (optional)
+        workflow: Workflow steps as list of dicts or JSON string (optional)
+        timeout: Max runtime (optional)
+        retry_count: Retry attempts (optional)
+        execution_enabled: Enable execution
+        schedule_enabled: Enable schedule
+        multiple_executions: Allow concurrent runs
+        log_level: Logging level
+        dupe_option: Duplicate handling (create/update/skip)
+        server: Server name/alias
 
     Returns:
         Job creation response
 
-    Workflow Steps:
-        If workflow parameter is provided, it should be a list of step dictionaries:
-        - Command steps: {"exec": "command", "description": "..."}
-        - Script steps: {"script": "#!/bin/bash\\n...", "description": "..."}
-        - Job refs: {"jobref": {"name": "...", "project": "..."}, "description": "..."}
-
-    Enhancement Features (when enhance_job=True and command provided):
-        - Breaks commands into logical script steps
-        - Generates markdown documentation
-        - Extracts variables and creates job options automatically
-        - Substitutes variables with @option.VARIABLENAME@ format
-        - Sets job to run locally if no target nodes specified
-
-    Example:
-        create_job(
-            project="my-project",
-            name="Hello World Job",
-            command="echo 'Hello, World!'",
-            description="A simple greeting job",
-            group="examples",
-            schedule={"cron": "0 9 * * MON-FRI"},
-            server="demo"
-        )
+    Note:
+        For complex job building with variable extraction, step breaking,
+        and enhancement rules, use build_job() instead.
     """
     client = get_client(server)
 
-    # Parse options if provided as JSON string
+    # Parse JSON strings
     if isinstance(options, str):
-        try:
-            options = json.loads(options)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Invalid options JSON string: {e}")
-
-    # Parse workflow if provided as JSON string
+        options = json.loads(options)
     if isinstance(workflow, str):
-        try:
-            workflow = json.loads(workflow)
-        except (json.JSONDecodeError, ValueError) as e:
-            raise ValueError(f"Invalid workflow JSON string: {e}")
+        workflow = json.loads(workflow)
 
-    # Extract steps from workflow if it's a dict with 'steps' key
+    # Extract steps from workflow dict
     if isinstance(workflow, dict) and "steps" in workflow:
         workflow = workflow["steps"]
 
-    # Decode escaped strings in workflow steps (handle \n, \t, etc.)
-    if workflow and isinstance(workflow, list):
-        for step in workflow:
-            if isinstance(step, dict):
-                # Decode script field if present
-                if "script" in step and isinstance(step["script"], str):
-                    # Use encode/decode to properly handle escape sequences
-                    try:
-                        step["script"] = step["script"].encode().decode('unicode_escape')
-                    except Exception:
-                        # If decoding fails, leave as-is
-                        pass
-                # Decode exec field if present
-                if "exec" in step and isinstance(step["exec"], str):
-                    try:
-                        step["exec"] = step["exec"].encode().decode('unicode_escape')
-                    except Exception:
-                        # If decoding fails, leave as-is
-                        pass
-
-    # Convert list-style options to Rundeck format
+    # Format options for Rundeck
     # Rundeck expects options as a list of dicts with specific keys
     if isinstance(options, list):
         # Options are already in list format, ensure proper structure
@@ -934,61 +884,16 @@ def create_job(
             formatted_options.append(formatted_opt)
         options = formatted_options
 
-    # Use custom workflow if provided, otherwise process command
+    # Build workflow steps
     if workflow:
-        # User provided custom workflow steps
         steps = workflow
-        enhanced_description = description
-        variables = []  # Don't auto-extract variables from workflow
-    elif enhance_job and command:
-        # Enhanced job processing from command
-        # Extract variables from command
-        variables = _extract_variables_from_command(command)
-
-        # Break command into logical steps
-        steps = _break_command_into_steps(command, name)
-
-        # Keep description brief - don't add code/markdown to description field
-        enhanced_description = description
     elif command:
-        # Simple job without enhancement
         if command.strip().startswith("#!"):
-            steps = [{"script": command, "description": f"Execute {name}"}]
+            steps = [{"script": command}]
         else:
-            steps = [{"exec": command, "description": f"Execute {name}"}]
-        enhanced_description = description
-        variables = []
+            steps = [{"exec": command}]
     else:
         raise ValueError("Either 'command' or 'workflow' parameter must be provided")
-
-    # Create job options from variables
-    if variables and not options:
-        # Only auto-generate options if none were provided
-        extracted_options_dict = _create_job_options_from_variables(variables)
-        # Convert to list format
-        options = []
-        for opt_name, opt_config in extracted_options_dict.items():
-            formatted_opt = {
-                "name": opt_name,
-                "description": opt_config.get("description", ""),
-                "required": opt_config.get("required", False),
-            }
-            if "defaultValue" in opt_config:
-                formatted_opt["value"] = opt_config["defaultValue"]
-            if "secure" in opt_config:
-                formatted_opt["secure"] = opt_config["secure"]
-            if "values" in opt_config:
-                formatted_opt["values"] = opt_config["values"]
-                formatted_opt["type"] = "select"
-            options.append(formatted_opt)
-
-    # Substitute variables in steps (do this regardless of whether options were auto-generated)
-    if variables:
-        for step in steps:
-            if "exec" in step:
-                step["exec"] = _substitute_variables_in_command(step["exec"], variables)
-            elif "script" in step:
-                step["script"] = _substitute_variables_in_command(step["script"], variables)
 
     # Set to run locally if no node filter specified
     if not node_filter:
@@ -1025,19 +930,16 @@ def create_job(
             "threadcount": "1"
         }
 
-    # Build the job definition in YAML format
+    # Build job definition
     job_def = {
         "uuid": _generate_job_uuid(),
         "name": name,
-        "description": enhanced_description,
+        "description": description,
         "group": group,
         "loglevel": log_level,
         "multipleExecutions": multiple_executions,
         "executionEnabled": execution_enabled,
         "scheduleEnabled": schedule_enabled,
-        "defaultTab": "nodes",
-        "nodeFilterEditable": False,
-        "nodesSelectedByDefault": True,
         "sequence": {"keepgoing": False, "strategy": "node-first", "commands": steps},
     }
 
