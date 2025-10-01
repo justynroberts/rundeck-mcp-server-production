@@ -2,7 +2,11 @@
 
 ## When to Use Script vs Exec Steps
 
-### Use SCRIPT Steps For:
+### DEFAULT: Use SCRIPT Steps (Recommended)
+
+**ALWAYS prefer script steps unless you have a very simple single command.**
+
+Use script steps for:
 - **Multi-line scripts** (anything with more than one command)
 - **Complex logic** (if statements, loops, functions)
 - **Scripts with shebangs** (`#!/bin/bash`, `#!/usr/bin/env python3`)
@@ -10,11 +14,12 @@
 - **Scripts requiring interpreters** (PowerShell, Python, Ruby)
 - **Error handling** (set -e, trap commands)
 - **Variable assignments** and **command substitution**
+- **Most automation tasks** (the safe default)
 
-### Use EXEC Steps For:
-- **Single simple commands only** (e.g., `echo "Hello"`, `ls -la`, `df -h`)
-- **One-liner commands** without complex logic
-- **Direct command execution** without shell features
+### Use EXEC Steps ONLY For:
+- **Very simple single commands** (e.g., `echo "Hello"`, `ls -la`, `df -h`)
+- When you're absolutely certain it's a one-liner with no complexity
+- **When in doubt, use script instead**
 
 ### Examples:
 
