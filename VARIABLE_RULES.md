@@ -144,3 +144,109 @@ Use script steps for:
 
 - **Script steps**: Rundeck processes these before passing to shell, use `@option.VAR@`
 - **Exec/Plugin/JobRef**: Rundeck substitutes at runtime, use `${option.VAR}`
+
+## Best Practices: Use Multiple Steps
+
+**IMPORTANT: Break jobs into multiple logical steps whenever possible!**
+
+### Benefits of Multiple Steps:
+- **Better visibility** - See progress of each phase
+- **Easier debugging** - Identify exactly which step failed
+- **Cleaner organization** - Each step has a clear purpose
+- **Reusability** - Steps can use different technologies (script, SQL, Ansible, etc.)
+- **Better error handling** - Add error handlers per step
+
+### When to Split Into Multiple Steps:
+
+Split your workflow when you have:
+- **Different logical phases** (setup → execute → cleanup)
+- **Different technologies** (bash script → SQL query → REST API call)
+- **Natural breakpoints** (comments, echo separators, major operation changes)
+- **Error handling opportunities** (check status after critical operations)
+- **Long scripts** (>20 lines should usually be multiple steps)
+
+### Example - Multi-Step Workflow:
+
+**GOOD - Multiple focused steps:**
+```yaml
+sequence:
+  commands:
+  - description: Validate prerequisites
+    script: |
+      #!/bin/bash
+      if [ ! -d /opt/app ]; then
+        echo "ERROR: App directory missing"
+        exit 1
+      fi
+
+  - description: Stop application service
+    script: |
+      #!/bin/bash
+      systemctl stop @option.service_name@
+      sleep 2
+
+  - description: Backup configuration
+    script: |
+      #!/bin/bash
+      tar -czf /backup/config-$(date +%Y%m%d).tar.gz /opt/app/config
+
+  - description: Log deployment to database
+    nodeStep: true
+    type: org.rundeck.sqlrunner.SQLRunnerNodeStepPlugin
+    configuration:
+      jdbcUrl: jdbc:mysql://localhost:3306/${option.database}
+      user: ${option.db_user}
+      scriptBody: |
+        INSERT INTO deployments (app, version, timestamp)
+        VALUES ('${option.app_name}', '${option.version}', NOW());
+
+  - description: Deploy new version
+    script: |
+      #!/bin/bash
+      cp -r /staging/@option.version@/* /opt/app/
+
+  - description: Start application service
+    script: |
+      #!/bin/bash
+      systemctl start @option.service_name@
+
+  - description: Verify service health
+    script: |
+      #!/bin/bash
+      sleep 5
+      curl -f http://localhost:8080/health || exit 1
+```
+
+**BAD - Everything in one massive step:**
+```yaml
+sequence:
+  commands:
+  - description: Deploy application
+    script: |
+      #!/bin/bash
+      # Validate
+      if [ ! -d /opt/app ]; then exit 1; fi
+      # Stop
+      systemctl stop service
+      # Backup
+      tar -czf backup.tar.gz /opt/app/config
+      # Database logging would need separate tool
+      # Deploy
+      cp -r /staging/* /opt/app/
+      # Start
+      systemctl start service
+      # Verify
+      sleep 5
+      curl http://localhost:8080/health
+```
+
+### Use Different Step Types:
+
+Don't just use script steps - leverage the right tool for each task:
+
+- **Script steps** - Shell commands, system operations
+- **SQL steps** - Database queries, logging, data updates
+- **Ansible steps** - Configuration management, multi-node orchestration
+- **Job references** - Call other jobs, chain workflows
+- **HTTP steps** - REST API calls, webhooks
+- **Progress badges** - Visual status indicators
