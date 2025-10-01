@@ -686,31 +686,41 @@ def _create_job_options_from_variables(variables: list[str]) -> dict[str, Any]:
     return options
 
 
-def _substitute_variables_in_command(command: str, variables: list[str]) -> str:
+def _substitute_variables_in_command(command: str, variables: list[str], is_script: bool = False) -> str:
     """Replace variable references with Rundeck option syntax.
 
-    Rules:
-    - ALWAYS use @option.variablename@ format for any script type
-    - Handles both ${VAR} and ${option.VAR} patterns
+    Critical Rules:
+    - Script steps (script field): MUST use @option.variablename@ format
+    - Exec steps (exec field): Use ${option.variablename} format
+
+    Args:
+        command: Command or script text
+        variables: List of variable names to substitute
+        is_script: True if this is a script step, False for exec step
+
+    Returns:
+        Command with variables substituted in correct format
     """
     modified_command = command
 
-    # First, handle cases where user already wrote ${option.VARNAME}
-    # Convert ${option.varname} to @option.varname@
-    modified_command = re.sub(r"\$\{option\.([A-Za-z0-9_]+)\}", r"@option.\1@", modified_command, flags=re.IGNORECASE)
-
-    # Also handle $option.varname (without braces)
-    modified_command = re.sub(r"\$option\.([A-Za-z0-9_]+)", r"@option.\1@", modified_command, flags=re.IGNORECASE)
-
-    # Then handle extracted variables (${VAR} or $VAR patterns)
-    for var in variables:
-        # Skip if this is already "option" (from ${option.varname} patterns)
-        if var.lower() == "option":
-            continue
-
-        # Always use @option.VAR@ format for all scripts and commands
-        modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
-        modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+    if is_script:
+        # Script steps: Use @option.VAR@ format
+        for var in variables:
+            if var.lower() == "option":
+                continue
+            # Convert ${VAR} or $VAR to @option.VAR@
+            modified_command = re.sub(rf"\${{{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+            # Also handle if already in ${option.VAR} format
+            modified_command = re.sub(rf"\${{option\.{var}}}", f"@option.{var}@", modified_command, flags=re.IGNORECASE)
+    else:
+        # Exec steps: Use ${option.VAR} format
+        for var in variables:
+            if var.lower() == "option":
+                continue
+            # Convert ${VAR} or $VAR to ${option.VAR}
+            modified_command = re.sub(rf"\${{{var}}}", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
+            modified_command = re.sub(rf"\${var}(?![A-Za-z0-9_])", f"${{option.{var}}}", modified_command, flags=re.IGNORECASE)
 
     return modified_command
 
@@ -752,6 +762,146 @@ def _generate_markdown_documentation(name: str, description: str, variables: lis
     doc += "  - Multi-line scripts: `@option.VARIABLENAME@` format\n"
 
     return doc
+
+
+def build_job(
+    project: str,
+    name: str,
+    command: str,
+    description: str = "",
+    group: str | None = None,
+    extract_variables: bool = True,
+    break_into_steps: bool = True,
+    node_filter: dict[str, Any] | str | None = None,
+    schedule: dict[str, Any] | None = None,
+    timeout: str | None = None,
+    retry_count: int | None = None,
+    execution_enabled: bool = True,
+    schedule_enabled: bool = True,
+    multiple_executions: bool = False,
+    log_level: str = "INFO",
+    dupe_option: str = "create",
+    server: str | None = None,
+) -> dict[str, Any]:
+    """Build a Rundeck job with intelligent processing and variable extraction.
+
+    This function provides complex job building with:
+    - Automatic variable extraction from commands
+    - Breaking complex scripts into logical steps
+    - Proper variable substitution based on step type
+    - Auto-generation of job options
+
+    Variable Substitution Rules (Critical):
+    - Script steps (#!/bin/bash): Use @option.variablename@ format
+    - Exec steps (commands): Use ${option.variablename} format
+
+    Args:
+        project: Project name
+        name: Job name
+        command: Command or script to process
+        description: Job description
+        group: Job group
+        extract_variables: Auto-extract variables from command
+        break_into_steps: Break complex scripts into multiple steps
+        node_filter: Node targeting
+        schedule: Schedule configuration
+        timeout: Max runtime
+        retry_count: Retry attempts
+        execution_enabled: Enable execution
+        schedule_enabled: Enable schedule
+        multiple_executions: Allow concurrent runs
+        log_level: Logging level
+        dupe_option: Duplicate handling
+        server: Server name/alias
+
+    Returns:
+        Job creation response
+    """
+    client = get_client(server)
+
+    # Extract variables from command if requested
+    variables = []
+    if extract_variables:
+        variables = _extract_variables_from_command(command)
+
+    # Break command into steps if requested
+    if break_into_steps and len(command.split('\n')) > 5:
+        steps = _break_command_into_steps(command, name)
+    else:
+        # Single step
+        if command.strip().startswith("#!"):
+            steps = [{"script": command, "description": f"Execute {name}"}]
+        else:
+            steps = [{"exec": command, "description": f"Execute {name}"}]
+
+    # Create job options from extracted variables
+    options = []
+    if variables:
+        options_dict = _create_job_options_from_variables(variables)
+        for opt_name, opt_config in options_dict.items():
+            formatted_opt = {
+                "name": opt_name,
+                "description": opt_config.get("description", ""),
+                "required": opt_config.get("required", False),
+            }
+            if "defaultValue" in opt_config:
+                formatted_opt["value"] = opt_config["defaultValue"]
+            options.append(formatted_opt)
+
+    # Substitute variables in steps with correct format based on step type
+    if variables:
+        for step in steps:
+            if "script" in step:
+                # Script step: Use @option.VAR@ format
+                step["script"] = _substitute_variables_in_command(step["script"], variables, is_script=True)
+            elif "exec" in step:
+                # Exec step: Use ${option.VAR} format
+                step["exec"] = _substitute_variables_in_command(step["exec"], variables, is_script=False)
+
+    # Default node filter if not specified
+    if not node_filter:
+        node_filter = {"filter": "name: localhost"}
+
+    # Normalize node_filter
+    if isinstance(node_filter, str):
+        node_filter = {"filter": node_filter}
+
+    # Build job definition
+    job_def = {
+        "uuid": _generate_job_uuid(),
+        "name": name,
+        "description": description,
+        "group": group,
+        "loglevel": log_level,
+        "multipleExecutions": multiple_executions,
+        "executionEnabled": execution_enabled,
+        "scheduleEnabled": schedule_enabled,
+        "sequence": {"keepgoing": False, "strategy": "node-first", "commands": steps},
+    }
+
+    # Add optional fields
+    if options:
+        job_def["options"] = options
+    if node_filter:
+        job_def["nodefilters"] = node_filter
+    if schedule:
+        job_def["schedule"] = schedule
+        job_def["schedules"] = []
+    if timeout:
+        job_def["timeout"] = timeout
+    if retry_count:
+        job_def["retry"] = str(retry_count)
+
+    # Convert to YAML and import
+    job_yaml = yaml.dump([job_def], default_flow_style=False)
+    headers = {"Content-Type": "application/yaml"}
+    params = {"fileformat": "yaml", "dupeOption": dupe_option}
+
+    response = client._make_request(
+        "POST", f"project/{project}/jobs/import", data=job_yaml, params=params, headers=headers
+    )
+
+    return response
 
 
 def create_job(
@@ -1394,6 +1544,7 @@ job_tools = {
     "write": [
         run_job,
         run_job_with_monitoring,
+        build_job,
         create_job,
         job_import,
         modify_job,
