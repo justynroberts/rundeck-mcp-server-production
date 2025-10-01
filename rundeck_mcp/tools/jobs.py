@@ -14,13 +14,13 @@ from ..models.rundeck import Job, JobAnalysis, JobDefinition, JobVisualization
 
 
 def _generate_job_uuid() -> str:
-    """Generate a 16-digit alphanumeric random UUID for job creation.
+    """Generate a proper UUID (RFC 4122) for job creation.
 
     Returns:
-        16-character string containing random letters and numbers
+        UUID string in standard format (e.g., '123e4567-e89b-12d3-a456-426614174000')
     """
-    characters = string.ascii_letters + string.digits
-    return ''.join(random.choice(characters) for _ in range(16))
+    import uuid
+    return str(uuid.uuid4())
 
 
 def get_jobs(project: str, group: str | None = None, server: str | None = None) -> ListResponseModel[Job]:
@@ -542,63 +542,66 @@ def _extract_variables_from_command(command: str) -> list[str]:
 
 
 def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
-    """Break a command into logical script steps.
+    """Break a command into logical steps for better organization.
 
-    Returns steps with proper structure:
-    - Single line commands use 'exec' field
-    - Multi-line scripts or commands with shebangs use 'script' field
+    Creates multiple steps when appropriate:
+    - Detects logical boundaries (comments, echo separators, key operations)
+    - Groups related commands together
+    - Uses 'exec' for single commands, 'script' for multi-line blocks
+
+    Returns:
+        List of step dictionaries with 'exec'/'script' and 'description' fields
     """
     lines = [line.strip() for line in command.split("\n") if line.strip()]
 
-    # Check if this is a script (has shebang or multiple lines)
-    is_script = command.strip().startswith("#!") or len(lines) > 1
+    # Single line command - return as exec step
+    if len(lines) == 1 and not command.strip().startswith("#!"):
+        return [{"exec": command.strip(), "description": name}]
 
-    if len(lines) <= 1 and not is_script:
-        # Single line command - return as exec step
-        return [{"exec": command, "description": f"Execute {name}"}]
-
-    # For scripts with shebang, keep as single script step
+    # Script with shebang - keep as single script step
     if command.strip().startswith("#!"):
-        return [{
-            "script": command,
-            "description": name
-        }]
+        return [{"script": command, "description": name}]
 
     steps = []
     current_step_lines = []
     step_counter = 1
 
+    # Keywords that indicate a new logical step
+    step_keywords = [
+        "check", "verify", "validate", "test",
+        "install", "download", "fetch", "clone",
+        "setup", "configure", "initialize", "prepare",
+        "start", "stop", "restart", "reload",
+        "deploy", "build", "compile", "package",
+        "backup", "restore", "archive", "snapshot",
+        "cleanup", "clean", "remove", "delete",
+        "update", "upgrade", "patch", "migrate",
+        "monitor", "health", "status", "diagnostic"
+    ]
+
     for line in lines:
-        # Check if this line starts a new logical step
-        if (
-            line.startswith("#")
-            or line.startswith('echo "=')
-            or line.startswith('echo "===')
-            or any(
-                keyword in line.lower()
-                for keyword in [
-                    "install",
-                    "download",
-                    "setup",
-                    "configure",
-                    "start",
-                    "stop",
-                    "restart",
-                    "deploy",
-                    "backup",
-                    "cleanup",
-                ]
-            )
-        ) and current_step_lines:
+        # Detect step boundaries
+        is_new_step = False
+
+        if current_step_lines:  # Only split if we have accumulated lines
+            # Comment-based separation
+            if line.startswith("#") and not line.startswith("#!/"):
+                is_new_step = True
+            # Echo separators
+            elif line.startswith('echo "=') or line.startswith("echo '="):
+                is_new_step = True
+            # Keyword-based detection
+            elif any(keyword in line.lower() for keyword in step_keywords):
+                is_new_step = True
+
+        if is_new_step:
+            # Save current step
             step_command = "\n".join(current_step_lines)
-            # Use 'script' for multi-line, 'exec' for single line
             step_field = "script" if len(current_step_lines) > 1 else "exec"
-            steps.append(
-                {
-                    step_field: step_command,
-                    "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
-                }
-            )
+            steps.append({
+                step_field: step_command,
+                "description": _infer_step_description(current_step_lines[0])
+            })
             step_counter += 1
             current_step_lines = []
 
@@ -607,16 +610,13 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
     # Add final step
     if current_step_lines:
         step_command = "\n".join(current_step_lines)
-        # Use 'script' for multi-line, 'exec' for single line
         step_field = "script" if len(current_step_lines) > 1 else "exec"
-        steps.append(
-            {
-                step_field: step_command,
-                "description": f"Step {step_counter}: {_infer_step_description(current_step_lines[0])}",
-            }
-        )
+        steps.append({
+            step_field: step_command,
+            "description": _infer_step_description(current_step_lines[0])
+        })
 
-    return steps
+    return steps if steps else [{"script": command, "description": name}]
 
 
 def _infer_step_description(line: str) -> str:
