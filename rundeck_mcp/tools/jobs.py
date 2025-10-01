@@ -783,17 +783,28 @@ def build_job(
     dupe_option: str = "create",
     server: str | None = None,
 ) -> dict[str, Any]:
-    """Build a Rundeck job with intelligent processing and variable extraction.
+    """Build a Rundeck job from a command/script with intelligent processing.
 
-    This function provides complex job building with:
+    Use this for: Shell scripts, bash commands, simple automation
+    Creates: exec/script steps only (not plugin steps)
+
+    Features:
     - Automatic variable extraction from commands
-    - Breaking complex scripts into logical steps
+    - Breaking complex scripts into logical exec/script steps
     - Proper variable substitution based on step type
     - Auto-generation of job options
 
     Variable Substitution Rules (Critical):
-    - Script steps (#!/bin/bash): Use @option.variablename@ format
-    - Exec steps (commands): Use ${option.variablename} format
+    - Script steps (script field): Use @option.variablename@ format
+    - Exec steps (exec field): Use ${option.variablename} format
+
+    For jobs with plugin steps (SQL, Ansible, HTTP, job refs, etc.):
+    - Use create_job() with pre-defined workflow parameter
+    - Use job_import() with complete YAML/JSON definition
+
+    Step Types Created:
+    - exec: Single-line commands (e.g., "df -h")
+    - script: Multi-line scripts or scripts with shebang
 
     Args:
         project: Project name
@@ -802,7 +813,7 @@ def build_job(
         description: Job description
         group: Job group
         extract_variables: Auto-extract variables from command
-        break_into_steps: Break complex scripts into multiple steps
+        break_into_steps: Break complex scripts into multiple exec/script steps
         node_filter: Node targeting
         schedule: Schedule configuration
         timeout: Max runtime
@@ -923,18 +934,32 @@ def create_job(
     dupe_option: str = "create",
     server: str | None = None,
 ) -> dict[str, Any]:
-    """Create a basic Rundeck job without complex enhancement rules.
+    """Create a Rundeck job with pre-defined workflow steps.
+
+    Use this for: Jobs with multiple step types (exec, script, plugin steps)
+    Supports: All Rundeck step types via workflow parameter
+
+    Step Types Supported (via workflow parameter):
+    - exec: Command execution - {"exec": "df -h", "description": "Check disk"}
+    - script: Script execution - {"script": "#!/bin/bash\\necho test", "description": "Run script"}
+    - jobref: Job reference - {"jobref": {"name": "Other Job", "uuid": "..."}, "description": "Chain job"}
+    - Plugin steps: SQL, Ansible, HTTP, etc. - {"type": "plugin-name", "nodeStep": true/false, "configuration": {...}}
+
+    Variable Format in Steps:
+    - Script steps (script field): Use @option.variablename@
+    - Exec steps (exec field): Use ${option.variablename}
+    - Plugin steps: Depends on plugin (usually ${option.variablename})
 
     Args:
         project: Project name
         name: Job name
-        command: Single command or script to execute
+        command: Single command or script (if workflow not provided)
         description: Brief job description
         group: Job group (optional)
         options: Job options as dict or list (optional)
         schedule: Schedule config (optional)
         node_filter: Node targeting (optional)
-        workflow: Workflow steps as list of dicts or JSON string (optional)
+        workflow: List of step dicts supporting ALL Rundeck step types (optional)
         timeout: Max runtime (optional)
         retry_count: Retry attempts (optional)
         execution_enabled: Enable execution
@@ -947,9 +972,19 @@ def create_job(
     Returns:
         Job creation response
 
+    Example workflow with multiple step types:
+        workflow = [
+            {"exec": "echo 'Starting'", "description": "Start"},
+            {"script": "#!/bin/bash\\ndf -h", "description": "Check disk"},
+            {"type": "org.rundeck.sqlrunner.SQLRunnerNodeStepPlugin",
+             "nodeStep": true,
+             "configuration": {"jdbcUrl": "...", "scriptBody": "SELECT * FROM ..."}},
+            {"jobref": {"name": "Other Job", "uuid": "abc-123"}}
+        ]
+
     Note:
-        For complex job building with variable extraction, step breaking,
-        and enhancement rules, use build_job() instead.
+        For automatic variable extraction and step breaking from simple scripts,
+        use build_job() instead.
     """
     client = get_client(server)
 
