@@ -547,16 +547,38 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
     Creates multiple steps when appropriate:
     - Detects logical boundaries (comments, echo separators, key operations)
     - Groups related commands together
-    - Uses 'exec' for single commands, 'script' for multi-line blocks
+    - ALWAYS uses 'script' steps by default (safer and more robust)
+    - Only uses 'exec' for truly simple single-line commands with no complexity
 
     Returns:
         List of step dictionaries with 'exec'/'script' and 'description' fields
     """
     lines = [line.strip() for line in command.split("\n") if line.strip()]
 
-    # Single line command - return as exec step
-    if len(lines) == 1 and not command.strip().startswith("#!"):
-        return [{"exec": command.strip(), "description": name}]
+    # Single line - check if truly simple or complex
+    if len(lines) == 1:
+        line = command.strip()
+        # Only use exec for VERY simple commands (no pipes, redirects, complex syntax)
+        is_simple = (
+            not line.startswith("#!") and
+            "<<" not in line and  # No heredocs
+            "|" not in line and   # No pipes
+            ">" not in line and   # No redirects
+            "<" not in line and   # No input redirects
+            "&&" not in line and  # No command chaining
+            "||" not in line and  # No command alternatives
+            ";" not in line and   # No command separators
+            "for " not in line.lower() and  # No loops
+            "while " not in line.lower() and
+            "if " not in line.lower() and   # No conditionals
+            "$(" not in line and  # No command substitution
+            "`" not in line       # No backtick substitution
+        )
+        if is_simple:
+            return [{"exec": line, "description": name}]
+        else:
+            # Complex single line - use script
+            return [{"script": line, "description": name}]
 
     # Script with shebang - keep as single script step
     if command.strip().startswith("#!"):
@@ -600,11 +622,13 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
                 is_new_step = True
 
         if is_new_step:
-            # Save current step
+            # Save current step - ALWAYS use script for multi-command steps
             step_command = "\n".join(current_step_lines)
-            step_field = "script" if len(current_step_lines) > 1 else "exec"
+            # Always add shebang to script steps if not present
+            if not step_command.startswith("#!"):
+                step_command = "#!/bin/bash\n" + step_command
             steps.append({
-                step_field: step_command,
+                "script": step_command,
                 "description": _infer_step_description(current_step_lines[0])
             })
             step_counter += 1
@@ -612,12 +636,14 @@ def _break_command_into_steps(command: str, name: str) -> list[dict[str, Any]]:
 
         current_step_lines.append(line)
 
-    # Add final step
+    # Add final step - ALWAYS use script
     if current_step_lines:
         step_command = "\n".join(current_step_lines)
-        step_field = "script" if len(current_step_lines) > 1 else "exec"
+        # Always add shebang to script steps if not present
+        if not step_command.startswith("#!"):
+            step_command = "#!/bin/bash\n" + step_command
         steps.append({
-            step_field: step_command,
+            "script": step_command,
             "description": _infer_step_description(current_step_lines[0])
         })
 
