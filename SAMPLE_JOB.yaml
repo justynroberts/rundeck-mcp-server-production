@@ -20,6 +20,7 @@
   schedules: []  # Add cron schedules here if needed
   sequence:
     commands:
+    # Step 1: Script step (multi-line or complex commands)
     - description: Always have a name in here  # Brief step description
       script: |-
         #!/bin/bash
@@ -27,8 +28,25 @@
         # Use options in the format @option.value@
         echo "Processing @option.version@"
       scriptInterpreter: bash  # bash|python3|powershell|etc
-    keepgoing: false  # Continue on step failure?
-    strategy: node-first  # node-first or step-first execution
+
+    # Step 2: Simple exec step (single command)
+    - description: Single command
+      exec: echo "single command step"
+
+    # Step 3: Another script step (showing multi-step chaining)
+    - description: Validate results
+      script: |-
+        #!/bin/bash
+        if [ -f /tmp/@option.version@ ]; then
+          echo "Success"
+        else
+          echo "Failed"
+          exit 1
+        fi
+      scriptInterpreter: bash
+
+    keepgoing: false  # Continue on step failure? (false = stop on first failure)
+    strategy: node-first  # node-first (run all steps on each node) or step-first (run each step on all nodes)
   tags: deployment,automation  # Comma-separated tags relevant to the task
   uuid: 0c1b2546-4fee-408d-96c3-5bee64f87a2b  # Auto-generated UUID (same as id)
 
@@ -37,3 +55,7 @@
 # - Always set scriptInterpreter to match your script type (bash, python3, powershell, etc.)
 # - Tags should be relevant to the job's purpose (deployment, monitoring, backup, etc.)
 # - Use @option.variable@ format for variables in script steps
+# - WHERE POSSIBLE, CREATE MULTI-STEP JOBS by chaining commands in the sequence.commands array
+# - Break complex workflows into logical steps (pre-check, execute, validate, cleanup, etc.)
+# - Each step should have a clear description of what it does
+# - Mix step types appropriately (script steps for complexity, exec for simple commands, plugins for specialized tasks)
