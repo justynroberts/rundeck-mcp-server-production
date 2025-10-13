@@ -414,14 +414,14 @@ from typing import Any
 **Error**: `No such option: --enable-write-tools`
 **Solution**: Use proper command structure:
 ```bash
-python -m rundeck_mcp serve --enable-write-tools --log-level DEBUG
+uvx --from /path/to/project rundeck-mcp serve --enable-write-tools --log-level DEBUG
 ```
 
 ### Issue 5: Configuration Validation
 **Error**: `RUNDECK_URL environment variable is not set`
 **Solution**: Either set environment variables or skip validation during testing:
 ```bash
-python -m rundeck_mcp serve --no-validate-config --enable-write-tools
+uvx --from /path/to/project rundeck-mcp serve --no-validate-config --enable-write-tools
 ```
 
 ### Issue 6: Parameter Validation Problems
@@ -451,8 +451,8 @@ print(json.dumps(generate_input_schema(get_jobs), indent=2))
 make dev-setup
 
 # Test server startup (should show debug messages)
-.venv/bin/python -m rundeck_mcp serve --no-validate-config --enable-write-tools --log-level DEBUG
+uvx --from . rundeck-mcp serve --no-validate-config --enable-write-tools --log-level DEBUG
 
 # Verify server responds to MCP protocol
-echo '{"jsonrpc": "2.0", "method": "list_tools", "id": 1}' | .venv/bin/python -m rundeck_mcp serve --no-validate-config
+echo '{"jsonrpc": "2.0", "method": "list_tools", "id": 1}' | uvx --from . rundeck-mcp serve --no-validate-config
 ```
