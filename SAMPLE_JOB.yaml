@@ -50,12 +50,14 @@
   tags: deployment,automation  # Comma-separated tags relevant to the task
   uuid: 0c1b2546-4fee-408d-96c3-5bee64f87a2b  # Auto-generated UUID (same as id)
 
-# IMPORTANT NOTES:
-# - UUIDs (id and uuid fields) are auto-generated - do not provide them
-# - Always set scriptInterpreter to match your script type (bash, python3, powershell, etc.)
-# - Tags should be relevant to the job's purpose (deployment, monitoring, backup, etc.)
+# CRITICAL RULES:
+# - **ANY script (bash/PowerShell/Python) MUST use `script:` type with scriptInterpreter field**
+# - **ONLY use `exec:` for single simple commands** (ls, echo, df, etc.)
+# - Split scripts into separate steps where logical (setup → process → validate)
+# - Always set scriptInterpreter to match your script type (bash, python3, powershell)
 # - Use @option.variable@ format for variables in script steps
-# - WHERE POSSIBLE, CREATE MULTI-STEP JOBS by chaining commands in the sequence.commands array
-# - Break complex workflows into logical steps (pre-check, execute, validate, cleanup, etc.)
+# - WHERE POSSIBLE, CREATE MULTI-STEP JOBS by chaining commands in sequence.commands array
+# - Break complex workflows into logical phases (pre-check, execute, validate, cleanup)
 # - Each step should have a clear description of what it does
-# - Mix step types appropriately (script steps for complexity, exec for simple commands, plugins for specialized tasks)
+# - Tags should be relevant to the job's purpose (deployment, monitoring, backup, etc.)
+# - UUIDs (id and uuid fields) are auto-generated - do not provide them
