@@ -1,6 +1,7 @@
 """FastMCP server for Rundeck integration."""
 
 import logging
+from typing import Any
 
 from mcp.server import Server
 from mcp.server.models import InitializationOptions
@@ -33,13 +34,29 @@ class RundeckMCPServer:
         """
         self.enable_write_tools = enable_write_tools
         self.tool_prompts = load_tool_prompts()
+        self._schema_cache: dict[str, dict[str, Any]] = {}
         self.server = Server("rundeck-mcp-server")
 
         # Register handlers
         self.server.list_tools = self._list_tools
         self.server.call_tool = self._call_tool
 
+        # Precompute input schemas for all tools (performance optimization)
+        self._precompute_schemas()
+
         logger.info(f"Rundeck MCP Server initialized (write tools: {enable_write_tools})")
+
+    def _precompute_schemas(self) -> None:
+        """Precompute input schemas for all tools (performance optimization).
+
+        Schemas are static and can be cached to avoid repeated computation
+        during list_tools calls.
+        """
+        logger.debug("Precomputing input schemas for all tools...")
+        for tool_func in all_tools:
+            tool_name = tool_func.__name__
+            self._schema_cache[tool_name] = generate_input_schema(tool_func)
+        logger.debug(f"Precomputed {len(self._schema_cache)} input schemas")
 
     async def _list_tools(self, request: ListToolsRequest) -> list[Tool]:
         """List available tools."""
@@ -49,7 +66,7 @@ class RundeckMCPServer:
         for tool_func in read_tools:
             tool_name = tool_func.__name__
             description = get_tool_description(tool_name, self.tool_prompts)
-            input_schema = generate_input_schema(tool_func)
+            input_schema = self._schema_cache[tool_name]  # Use cached schema
 
             tools.append(
                 Tool(
@@ -65,7 +82,7 @@ class RundeckMCPServer:
             for tool_func in write_tools:
                 tool_name = tool_func.__name__
                 description = get_tool_description(tool_name, self.tool_prompts)
-                input_schema = generate_input_schema(tool_func)
+                input_schema = self._schema_cache[tool_name]  # Use cached schema
 
                 # Determine if tool is destructive
                 destructive_tools = [
