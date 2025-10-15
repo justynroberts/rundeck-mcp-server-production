@@ -116,9 +116,19 @@ This document consolidates ALL prompt rules and guidance for Rundeck MCP tools.
   - Python scripts → `scriptInterpreter: python3`
   - Match shebang: `#!/usr/bin/python3` → `scriptInterpreter: python3`
 
-**VARIABLE RULES:**
+**VARIABLE RULES (CRITICAL):**
 - Script steps (`script:` field) → `@option.VAR@`
 - Everything else (exec, plugins, jobrefs) → `${option.VAR}`
+- ⚠️ **ALWAYS use `@option.name@` syntax in scripts, NOT shell-style `${option.name}`**
+- ✅ CORRECT: `@option.pd_incident_id@`, `@option.timeout@`, `@option.environment@`
+- ❌ WRONG: `${option.pd_incident_id}`, `$pd_incident_id`, `${PD_INCIDENT_ID}`
+
+**JOB OPTIONS BEST PRACTICES:**
+- Always provide default values for optional parameters
+- Use descriptive option names (snake_case preferred: `pd_incident_id`, `check_timeout`, `environment`)
+- Include clear descriptions for each option
+- Mark required options explicitly with `required: true`
+- For demo/simulation jobs, include options that would be used in production
 
 **JOB METADATA:**
 - Tags should be relevant to job's purpose (deployment, monitoring, backup, database, etc.)
