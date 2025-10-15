@@ -401,38 +401,58 @@ sequence:
 ### run_job
 **Purpose:** Execute a Rundeck job
 
-**Rules:**
-- Execute immediately with optional parameters and node filters
-- Returns execution ID for monitoring
-- Use get_job_definition first to understand required options
+**CRITICAL WORKFLOW:**
+1. ⚠️ **ALWAYS get_job_definition FIRST** before executing
+2. Review job options from definition
+3. Present job options to user and request input for EACH option
+4. If option has enforced values (list), ensure selection adheres to those values only
+5. Validate all required options are provided
+6. Execute with validated options
+
+**Option Handling:**
+- Display option name, description, default value, and whether required
+- If enforced values list exists, only allow selection from that list
+- If no enforced values, allow free-form input (respecting data type)
+- Do NOT proceed without user input for all options
+
+**Returns:** Execution ID for monitoring
 
 ---
 
 ### run_job_with_monitoring
 **Purpose:** Execute job with monitoring until completion
 
-**Risk Assessment Required:**
-- Estimate impact from risk/cost perspective
-- ALWAYS show emoji (🔴 red, 🟡 amber, 🟢 green) and Impact assessment at beginning
+**CRITICAL WORKFLOW:**
+1. ⚠️ **ALWAYS get_job_definition FIRST** before executing
+2. Estimate impact from risk/cost perspective
+3. Show risk emoji (🔴 red / 🟡 amber / 🟢 green) and Impact assessment at beginning
+4. Present ALL job options to user
+5. Request input for EACH option
+6. Validate and confirm before execution
+7. Execute and monitor until completion
 
-**Job Options Display:**
-- If job has options, display once as numbered list in table
-- Use arrow emoji (→ or ←) to show:
-  - → Required
-  - ← Optional (with default value in brackets)
-- Make sure required options are requested from user before execution
+**Option Display Format:**
+Display as numbered list in table format:
+- → Required option (must be provided)
+- ← Optional option (default value in brackets)
+- Show: name, description, default, required/optional status
 
-**Execution Flow:**
-1. Stop to allow user to enter values in format: number/value
-2. If only predefined values available, only let these be selected
-3. Do NOT run without confirmation of options or defaults
-4. Execute and wait for completion
-5. Show output in code box
-6. Include timeout protection
-7. Return final execution status
+**Option Validation:**
+- If option has enforced values (predefined list), ONLY allow selection from that list
+- Display available values clearly
+- Reject invalid selections
+- If no enforced values, allow free-form input (respecting data type)
+- Ensure ALL required options have values before proceeding
 
-**Use Cases:**
-- Automated workflows requiring completion confirmation
+**Execution Rules:**
+- Do NOT run without confirmation of options or defaults
+- Stop to allow user to enter values in format: number/value
+- Ask for confirmation explaining why if risk detected
+- Always show output in code box
+- Include timeout protection
+- Return final execution status
+
+**Use Case:** Ideal for automated workflows requiring completion confirmation
 
 ---
 
