@@ -11,15 +11,16 @@
   nodeFilterEditable: false
   plugins:
     ExecutionLifecycle: {}
-  runnerSelector:  # Optional: For Rundeck Enterprise - runs job on specific runner by tag
+  runnerSelector:  # Optional: For Rundeck Enterprise - determines WHERE job orchestration happens
     filter: EMEA  # Runner tag (EMEA, APAC, Americas, production, staging, development)
     runnerFilterMode: TAGS
     runnerFilterType: TAG_FILTER_AND  # Use AND logic for multiple tags
+    # NOTE: runnerSelector = where orchestration happens, node filters = where steps execute
   scheduleEnabled: true
   schedules: []  # Add cron schedules here if needed
   sequence:
     commands:
-    # Step 1: Script step (multi-line or complex commands)
+    # Step 1: Script step (multi-line or complex commands - USE THIS AS DEFAULT)
     - description: Always have a name in here  # Brief step description
       script: |-
         #!/bin/bash
@@ -28,7 +29,7 @@
         echo "Processing @option.version@"
       scriptInterpreter: bash  # bash|python3|powershell|etc
 
-    # Step 2: Simple exec step (single command)
+    # Step 2: Simple exec step (ONLY for single simple commands - BY EXCEPTION)
     - description: Single command
       exec: echo "single command step"
 

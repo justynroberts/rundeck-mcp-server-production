@@ -165,6 +165,10 @@ runnerSelector:
   runnerFilterMode: TAGS
   runnerFilterType: TAG_FILTER_AND
 ```
+- **IMPORTANT DISTINCTION:**
+  - `runnerSelector` determines WHERE the job orchestration happens (which runner executes the workflow)
+  - Node filters (nodeFilterEditable, defaultTab: nodes) determine WHERE individual steps execute (target nodes)
+  - A runner can orchestrate job steps that execute on remote nodes
 - Use when jobs need to execute on specific geographic regions or environments
 - If not specified, job runs on the Rundeck server itself
 
