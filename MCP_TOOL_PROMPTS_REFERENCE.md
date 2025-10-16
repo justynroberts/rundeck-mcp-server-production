@@ -9,6 +9,9 @@ This document consolidates ALL prompt rules and guidance for Rundeck MCP tools.
 **Error Handling Philosophy:**
 > IMPORTANT: If a tool encounters errors (node not found, project not found, job not found, connection issues, etc.), it's okay to stop and report the error clearly. Do not attempt workarounds or continue with partial information. Fail fast and fail clearly. When nodes are not found or unavailable, stop execution immediately and inform the user.
 
+**Server Scope:**
+> When working with jobs, projects, or executions, stay on the current server unless the user explicitly requests switching to a different server. Do NOT automatically search across multiple servers to find jobs or resources.
+
 ---
 
 ## 📊 SERVER & PROJECT MANAGEMENT
