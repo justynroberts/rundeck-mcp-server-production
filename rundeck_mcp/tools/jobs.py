@@ -72,6 +72,16 @@ def get_job_definition(job_id: str, server: str | None = None) -> JobDefinition:
     client = get_client(server)
     response = client._make_request("GET", f"job/{job_id}")
 
+    # Handle options - can be a dict with nested list or a list directly
+    options_data = response.get("options", [])
+    if isinstance(options_data, dict):
+        # If it's a dict, it might have an 'option' key containing the list
+        options_list = options_data.get("option", [])
+    elif isinstance(options_data, list):
+        options_list = options_data
+    else:
+        options_list = []
+
     return JobDefinition(
         id=response["id"],
         name=response["name"],
@@ -82,7 +92,7 @@ def get_job_definition(job_id: str, server: str | None = None) -> JobDefinition:
         scheduled=response.get("scheduled", False),
         schedule_enabled=response.get("scheduleEnabled", False),
         workflow=response.get("workflow", {}).get("steps", []),
-        options=response.get("options", {}),
+        options=options_list,
         node_filter=response.get("nodefilters"),
         schedule=response.get("schedule"),
     )
