@@ -477,6 +477,11 @@ sequence:
 - If no enforced values, allow free-form input (respecting data type)
 - Do NOT proceed without user input for all options
 
+**Node Filter Handling:**
+- If no node filter is specified when running the job, use the job's default node filter
+- Do NOT require user to specify nodes unless they want to override the default
+- The job definition contains the default node filter configuration
+
 **Returns:** Execution ID for monitoring
 
 ---
@@ -513,6 +518,11 @@ Display as numbered list in table format:
 - Always show output in code box
 - Include timeout protection
 - Return final execution status
+
+**Node Filter Handling:**
+- If no node filter is specified when running the job, use the job's default node filter
+- Do NOT require user to specify nodes unless they want to override the default
+- The job definition contains the default node filter configuration
 
 **Use Case:** Ideal for automated workflows requiring completion confirmation
 
