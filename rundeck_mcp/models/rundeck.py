@@ -261,14 +261,19 @@ class SystemInfo(BaseModel):
     api_version: str = Field(description="API version")
     server_name: str = Field(description="Server name")
     server_uuid: str = Field(description="Server UUID")
-    build_info: dict[str, Any] = Field(default_factory=dict, description="Build information")
-    system_stats: dict[str, Any] = Field(default_factory=dict, description="System statistics")
+    build_info: str | dict[str, Any] | None = Field(None, description="Build information")
+    system_stats: dict[str, Any] | None = Field(None, description="System statistics")
 
     @computed_field
     @property
     def summary(self) -> str:
         """Human-readable system summary."""
-        return f"Rundeck {self.rundeck_version} (API v{self.api_version})"
+        build_str = ""
+        if isinstance(self.build_info, str):
+            build_str = f" (build: {self.build_info})"
+        elif isinstance(self.build_info, dict) and self.build_info:
+            build_str = f" (build: {self.build_info.get('version', 'unknown')})"
+        return f"Rundeck {self.rundeck_version} (API v{self.api_version}){build_str}"
 
 
 class ProjectStats(BaseModel):
