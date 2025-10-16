@@ -11,11 +11,10 @@
   nodeFilterEditable: false
   plugins:
     ExecutionLifecycle: {}
-  runnerSelector:  # Optional: Runner selection for distributed execution
-    canChange: true
-    filter: EMEA  # Runner tag filter
+  runnerSelector:  # Optional: For Rundeck Enterprise - runs job on specific runner by tag
+    filter: EMEA  # Runner tag (EMEA, APAC, Americas, production, staging, development)
     runnerFilterMode: TAGS
-    runnerFilterType: TAG_FILTER_AND
+    runnerFilterType: TAG_FILTER_AND  # Use AND logic for multiple tags
   scheduleEnabled: true
   schedules: []  # Add cron schedules here if needed
   sequence:
@@ -61,3 +60,4 @@
 # - Each step should have a clear description of what it does
 # - Tags should be relevant to the job's purpose (deployment, monitoring, backup, etc.)
 # - UUIDs (id and uuid fields) are auto-generated - do not provide them
+# - For Rundeck Enterprise: Use runnerSelector to target specific runners by tag (EMEA, APAC, Americas, etc.)

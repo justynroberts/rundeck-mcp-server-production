@@ -154,6 +154,20 @@ This document consolidates ALL prompt rules and guidance for Rundeck MCP tools.
 - Tags should be relevant to job's purpose (deployment, monitoring, backup, database, etc.)
 - UUIDs are auto-generated - do NOT provide id or uuid fields
 
+**RUNNER SELECTOR (Rundeck Enterprise):**
+- For jobs that should run on specific Rundeck Enterprise runners, use `runnerSelector`
+- Reference runners by tags using TAG_FILTER_AND mode
+- Common runner tags: EMEA, APAC, Americas, production, staging, development
+- Example configuration:
+```yaml
+runnerSelector:
+  filter: EMEA
+  runnerFilterMode: TAGS
+  runnerFilterType: TAG_FILTER_AND
+```
+- Use when jobs need to execute on specific geographic regions or environments
+- If not specified, job runs on the Rundeck server itself
+
 **EXAMPLES:**
 
 ❌ **WRONG - Multi-line in exec:**
@@ -273,6 +287,8 @@ sequence:
 
 **TAGS:** Relevant to job purpose (deployment, monitoring, backup, etc.)
 
+**RUNNER SELECTOR:** Use `runnerSelector` with `filter`, `runnerFilterMode: TAGS`, `runnerFilterType: TAG_FILTER_AND` for Rundeck Enterprise runners
+
 **Additional:**
 - Generates UUIDs automatically
 - Validates structure
@@ -323,6 +339,8 @@ sequence:
 **VARIABLES:** Script steps → `@option.VAR@`, Exec/plugins → `${option.VAR}`
 
 **TAGS:** Relevant to job purpose (deployment, monitoring, backup, etc.)
+
+**RUNNER SELECTOR:** Use `runnerSelector` with `filter`, `runnerFilterMode: TAGS`, `runnerFilterType: TAG_FILTER_AND` for Rundeck Enterprise runners
 
 **Safety:**
 - Requires `confirmed=True` for safety
