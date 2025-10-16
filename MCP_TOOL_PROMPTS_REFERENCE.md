@@ -91,13 +91,27 @@ This document consolidates ALL prompt rules and guidance for Rundeck MCP tools.
 - Each step should have clear description
 - Mix step types: script (complex), exec (simple), plugins (specialized)
 
-**STEP TYPE DECISION MATRIX:**
-- ⚠️ **ANY script (bash/PowerShell/Python/etc.) → ALWAYS use `script:` type**
+**STEP TYPE DECISION (CRITICAL - DEFAULT TO SCRIPT):**
+- ⚠️ **DEFAULT: Use `script:` type for ALL commands and scripting**
+- Use `script:` type as the standard - this is your default choice
+- **ONLY use `exec:` BY EXCEPTION for very short single commands** (ls, echo, df, pwd)
+- If you're unsure which to use → use `script:`
+
+**When you MUST use script: (the default)**
+- ANY bash/PowerShell/Python/Ruby scripting → `script:`
 - Multi-line commands → `script:`
 - Pipes (|), redirects (>, <) → `script:`
 - Command chaining (&&, ||, ;) → `script:`
 - Loops, conditionals, heredocs → `script:`
-- ✅ **ONLY use `exec:` for single simple commands** (ls, echo, df, etc.)
+- Variable substitution → `script:`
+- Any command with complexity → `script:`
+
+**When you MAY use exec: (rare exceptions only)**
+- Single word commands with simple flags: `ls -la`, `echo hello`, `df -h`, `pwd`
+- Absolutely NO pipes, redirects, or chaining
+- When in doubt → use `script:` instead
+
+**Other step types:**
 - SQL queries → SQL Runner plugin
 - Package/service management → Ansible plugin
 - API calls → HTTP plugin
@@ -243,9 +257,10 @@ sequence:
 
 **MULTI-STEP:** Chain commands in sequence.commands array (pre-check → execute → validate)
 
-**STEP TYPE:**
-- ⚠️ **ANY script (bash/PowerShell/Python) → ALWAYS `script:` type**
-- ✅ **ONLY use `exec:` for single simple commands**
+**STEP TYPE (DEFAULT TO SCRIPT):**
+- ⚠️ **DEFAULT: Use `script:` type - this is your standard choice**
+- **ONLY use `exec:` BY EXCEPTION for very short single commands** (ls, echo, df, pwd)
+- If unsure → use `script:`
 
 **SCRIPT SPLITTING:**
 - Split bash/PowerShell/Python scripts into multi-step jobs where appropriate stages are identified
@@ -293,9 +308,10 @@ sequence:
 
 **MULTI-STEP:** Chain commands in sequence.commands array (pre-check → execute → validate)
 
-**STEP TYPE:**
-- ⚠️ **ANY script (bash/PowerShell/Python) → ALWAYS `script:` type**
-- ✅ **ONLY use `exec:` for single simple commands**
+**STEP TYPE (DEFAULT TO SCRIPT):**
+- ⚠️ **DEFAULT: Use `script:` type - this is your standard choice**
+- **ONLY use `exec:` BY EXCEPTION for very short single commands** (ls, echo, df, pwd)
+- If unsure → use `script:`
 
 **SCRIPT SPLITTING:**
 - Split bash/PowerShell/Python scripts into multi-step jobs where appropriate stages are identified
@@ -816,14 +832,15 @@ Comprehensive variable substitution examples:
 
 1. **Fail Fast, Fail Clearly** - Don't attempt workarounds on errors
 2. **Multi-Step by Default** - Break complex workflows into logical phases
-3. **Scripts Use script: Type** - ANY script (bash/PowerShell/Python) ALWAYS uses `script:` type
-4. **Simple Commands Use exec:** - ONLY for single simple commands
-5. **Always Set scriptInterpreter** - Match to script content (bash, python3, powershell)
-6. **Variable Format Matters** - Script steps use @option.VAR@, everything else uses ${option.VAR}
-7. **Risk Assessment Required** - Show emoji and impact level for risky operations
-8. **Meaningful Tags** - Use relevant tags (deployment, monitoring, backup, etc.)
-9. **Node Filters Required** - Always specify explicit node filters for adhoc commands
-10. **Confirmation Before Destruction** - All destructive operations require explicit confirmation
+3. **DEFAULT TO script: Type** - Use `script:` as your standard choice for ALL commands and scripting
+4. **exec: Only By Exception** - ONLY use `exec:` for very short single commands (ls, echo, df, pwd)
+5. **When In Doubt Use script:** - If unsure which step type to use, always choose `script:`
+6. **Always Set scriptInterpreter** - Match to script content (bash, python3, powershell)
+7. **Variable Format Matters** - Script steps use @option.VAR@, everything else uses ${option.VAR}
+8. **Risk Assessment Required** - Show emoji and impact level for risky operations
+9. **Meaningful Tags** - Use relevant tags (deployment, monitoring, backup, etc.)
+10. **Node Filters Required** - Always specify explicit node filters for adhoc commands
+11. **Confirmation Before Destruction** - All destructive operations require explicit confirmation
 
 ---
 
