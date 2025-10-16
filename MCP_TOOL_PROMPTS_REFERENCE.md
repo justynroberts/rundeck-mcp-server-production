@@ -103,10 +103,16 @@ This document consolidates ALL prompt rules and guidance for Rundeck MCP tools.
 - API calls → HTTP plugin
 
 **SCRIPT SPLITTING (CRITICAL):**
-- Split scripts into separate steps where logical
-- Each logical phase = separate script step
-- Examples: setup → process → validate, pre-check → backup → deploy → verify
-- Each step should have clear description of its purpose
+- Split bash/PowerShell/Python scripts into multi-step jobs where appropriate stages are identified
+- Identify logical stages in scripts and create separate steps for each
+- Look for natural break points: initialization, validation, execution, verification, cleanup
+- If a script has distinct phases marked by comments or echo statements, split into separate steps
+- Each step should have one clear purpose and description
+- Examples of stages to split:
+  - Pre-checks/validation → Main execution → Post-validation → Cleanup
+  - Backup → Deploy → Verify → Rollback handler
+  - Setup environment → Process data → Generate reports → Archive results
+  - Download → Extract → Configure → Start service
 
 **SCRIPT INTERPRETER (CRITICAL):**
 - ALWAYS set `scriptInterpreter` field for script steps
@@ -240,7 +246,11 @@ sequence:
 **STEP TYPE:**
 - ⚠️ **ANY script (bash/PowerShell/Python) → ALWAYS `script:` type**
 - ✅ **ONLY use `exec:` for single simple commands**
-- Split scripts into separate steps where logical
+
+**SCRIPT SPLITTING:**
+- Split bash/PowerShell/Python scripts into multi-step jobs where appropriate stages are identified
+- Identify logical stages: initialization, validation, execution, verification, cleanup
+- Look for natural break points marked by comments or echo statements in scripts
 
 **SCRIPT INTERPRETER:** ALWAYS set for script steps (bash, python3, powershell)
 
@@ -286,7 +296,11 @@ sequence:
 **STEP TYPE:**
 - ⚠️ **ANY script (bash/PowerShell/Python) → ALWAYS `script:` type**
 - ✅ **ONLY use `exec:` for single simple commands**
-- Split scripts into separate steps where logical
+
+**SCRIPT SPLITTING:**
+- Split bash/PowerShell/Python scripts into multi-step jobs where appropriate stages are identified
+- Identify logical stages: initialization, validation, execution, verification, cleanup
+- Look for natural break points marked by comments or echo statements in scripts
 
 **SCRIPT INTERPRETER:** ALWAYS set for script steps (bash, python3, powershell)
 
